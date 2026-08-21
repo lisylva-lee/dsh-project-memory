@@ -1,0 +1,234 @@
+/* dsh-project-memory surfaces: plugin-config card + per-session switch. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+/* Collapsible card header (task-board style disclosure). */
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.cardHeadText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dsw-alias-text-1, inherit);
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-text-2, #888);
+}
+
+.pending {
+  flex: none;
+  font-size: 11px;
+  color: var(--dsw-alias-warn, #b8860b);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--dsw-alias-border, rgba(128, 128, 128, 0.2));
+}
+
+.row:last-of-type {
+  border-bottom: none;
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowLabel {
+  font-size: 13px;
+  color: var(--dsw-alias-text-1, inherit);
+}
+
+.rowHint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dsw-alias-text-2, #888);
+}
+
+.switch {
+  flex: none;
+  width: 34px;
+  height: 20px;
+  appearance: none;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-muted, #ccc);
+  position: relative;
+  cursor: pointer;
+  transition: background 120ms ease;
+  margin: 0;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+
+.switch:checked {
+  background: var(--dsw-alias-accent, #4f7cff);
+}
+
+.switch:checked::after {
+  transform: translateX(14px);
+}
+
+.switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.save {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--dsw-alias-accent, #4f7cff);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  font-size: 12px;
+  color: var(--dsw-alias-text-2, #888);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--dsw-alias-danger, #d9534f);
+}
+
+/* Per-session switch under the conversation (conversation.input.dock),
+   collapsed to a disclosure row by default, task-board style. */
+.dock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 2px 12px;
+  font-size: 12px;
+}
+
+.dockHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dsw-alias-text-2, #888);
+}
+
+.dockHeader:hover {
+  color: var(--dsw-alias-text-1, inherit);
+}
+
+.dockText {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dockText strong {
+  font-weight: 500;
+  color: var(--dsw-alias-text-1, inherit);
+}
+
+.dockState {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.dockBody {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 6px 6px;
+}
+
+.dockLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.dockHint {
+  color: var(--dsw-alias-text-2, #888);
+}
+
+.dockError {
+  font-size: 11px;
+  color: var(--dsw-alias-danger, #d9534f);
+}
+
+/* Chevron shared by the card and the dock disclosure. */
+.chevron {
+  flex: none;
+  transition: transform 120ms ease;
+}
+
+.chevronOpen {
+  flex: none;
+  transform: rotate(180deg);
+  transition: transform 120ms ease;
+}

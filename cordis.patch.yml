@@ -1,0 +1,13 @@
+# bundle patch for the project-memory plugin: inserts its plugin row into the
+# web profile roster. Applied as a profile bundle layer (the `dsh.bundle.patch`
+# manifest field); install with
+#   dsh plugin --profile web add link:<repo>/packages/dsh-project-memory
+#
+# The row is a dual-face plugin by package name: the node half (exports ".")
+# registers the project-memory runtime skill, the per-session guidance, the
+# session-start auto-init, the turn-end auto-maintain steer, and the
+# /api/dsh-project-memory config routes; the browser half (exports "./client")
+# renders the plugin-config card and the per-session memory switch.
+- insert:
+    - id: project-memory
+      name: '@linxin666/dsh-project-memory'
