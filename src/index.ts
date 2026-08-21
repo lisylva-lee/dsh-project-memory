@@ -26,6 +26,7 @@ import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import { GUIDANCE, MAINTAIN_PROMPT, SKILL_DESCRIPTION, SKILL_WHEN_TO_USE } from './core/guidance.ts'
 import { MEMORY_OFF_GUIDANCE } from './core/contract.ts'
 import { ensureMemoryInit, loadSkillContent, resolveSkillDir, resolveTemplateDir } from './core/templates.ts'
+import { runCompression } from './core/compress.ts'
 import { makeRoutes } from './routes.ts'
 import { MemoryStore } from './store.ts'
 
@@ -44,6 +45,8 @@ interface CompositionDefaults {
   autoInit: boolean
   autoMaintain: boolean
   announceToAgent: boolean
+  autoCompress: boolean
+  compressInterval: number
 }
 
 function resolveDefaults(config: Record<string, unknown> | undefined): CompositionDefaults {
@@ -52,6 +55,10 @@ function resolveDefaults(config: Record<string, unknown> | undefined): Compositi
     autoInit: typeof config?.autoInit === 'boolean' ? config.autoInit : true,
     autoMaintain: typeof config?.autoMaintain === 'boolean' ? config.autoMaintain : true,
     announceToAgent: typeof config?.announceToAgent === 'boolean' ? config.announceToAgent : true,
+    autoCompress: typeof config?.autoCompress === 'boolean' ? config.autoCompress : true,
+    compressInterval: typeof config?.compressInterval === 'number' && Number.isInteger(config.compressInterval) && config.compressInterval >= 1
+      ? config.compressInterval
+      : 5,
   }
 }
 
@@ -88,7 +95,10 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       autoInit: file?.autoInit ?? defaults.autoInit,
       autoMaintain: file?.autoMaintain ?? defaults.autoMaintain,
       announceToAgent: file?.announceToAgent ?? defaults.announceToAgent,
+      autoCompress: file?.autoCompress ?? defaults.autoCompress,
+      compressInterval: file?.compressInterval ?? defaults.compressInterval,
       sessions: file?.sessions ?? {},
+      counts: file?.counts ?? {},
     }
   }
 
@@ -101,6 +111,17 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
     if (!value.enabled) return false
     if (sessionId === undefined) return value.enabled
     return value.sessions[sessionId]?.enabled ?? true
+  }
+
+  /**
+   * Effective per-session compression: the global autoCompress is a hard gate;
+   * the per-session compressEnabled override (default on) refines it.
+   */
+  const sessionCompressActive = (sessionId: string | undefined): boolean => {
+    const value = resolve()
+    if (!value.enabled || !value.autoCompress) return false
+    if (sessionId === undefined) return true
+    return value.sessions[sessionId]?.compressEnabled ?? true
   }
 
   let disposeSkill: (() => void) | undefined
@@ -150,20 +171,39 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
   // and gated live, so toggling the config never churns listeners.
   ctx.on('agent/session-start', (payload) => {
     try {
-      const value = resolve()
-      if (!value.enabled || !value.autoInit) return
       const agent = payload?.agent
       if (!agent || isSubagentSession(agent)) return
       const header = agent.session?.header
       const cwd = header?.cwd
       if (typeof cwd !== 'string' || cwd === '') return
-      if (!sessionActive(header?.id)) return
-      const created = ensureMemoryInit(cwd, resolveTemplateDir())
-      if (created.length > 0) {
-        ctx.logger?.info?.('dsh-project-memory: initialized memory in ' + cwd + ': ' + created.join(', '))
+      const sessionId = header?.id
+      const value = resolve()
+      if (!value.enabled) return
+
+      // Auto-init the human-readable memory templates (idempotent).
+      if (value.autoInit && sessionActive(sessionId)) {
+        const created = ensureMemoryInit(cwd, resolveTemplateDir())
+        if (created.length > 0) {
+          ctx.logger?.info?.('dsh-project-memory: initialized memory in ' + cwd + ': ' + created.join(', '))
+        }
+      }
+
+      // Compression: count sessions per project; at the interval, compress.
+      if (sessionCompressActive(sessionId)) {
+        const next = (value.counts[cwd] ?? 0) + 1
+        if (next >= value.compressInterval) {
+          const results = runCompression(cwd)
+          store.setCount(cwd, 0)
+          ctx.logger?.info?.(
+            'dsh-project-memory: compressed memory in ' + cwd +
+            ': MEMORY.md=' + results.index + ', memory/=' + results.daily.compressed + ' files',
+          )
+        } else {
+          store.setCount(cwd, next)
+        }
       }
     } catch (error) {
-      ctx.logger?.warn?.('dsh-project-memory: session-start init failed: ' + String(error))
+      ctx.logger?.warn?.('dsh-project-memory: session-start init/compress failed: ' + String(error))
     }
   })
 

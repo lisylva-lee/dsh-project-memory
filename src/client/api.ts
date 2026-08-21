@@ -6,6 +6,7 @@
 /** One session-level override. */
 export interface SessionOverride {
   enabled?: boolean
+  compressEnabled?: boolean
 }
 
 /** The config view the GUI renders. */
@@ -14,11 +15,16 @@ export interface MemoryConfigView {
   autoInit: boolean
   autoMaintain: boolean
   announceToAgent: boolean
+  autoCompress: boolean
+  compressInterval: number
   sessions: Record<string, SessionOverride>
 }
 
 /** Global switches a PUT may patch. */
-export type GlobalConfigPatch = Partial<Pick<MemoryConfigView, 'enabled' | 'autoInit' | 'autoMaintain' | 'announceToAgent'>>
+export type GlobalConfigPatch = Partial<Pick<
+  MemoryConfigView,
+  'enabled' | 'autoInit' | 'autoMaintain' | 'announceToAgent' | 'autoCompress' | 'compressInterval'
+>>
 
 const API_PREFIX = '/api/dsh-project-memory'
 
@@ -60,10 +66,18 @@ export function updateConfig(patch: GlobalConfigPatch): Promise<MemoryConfigView
   })
 }
 
-/** Set (true/false) one session override. */
+/** Set (true/false) one session memory override. */
 export function updateSession(sessionId: string, enabled: boolean): Promise<MemoryConfigView> {
   return request<MemoryConfigView>(API_PREFIX + '/session', {
     method: 'PUT',
     body: JSON.stringify({ sessionId, enabled }),
+  })
+}
+
+/** Set (true/false) one session compression override. */
+export function updateSessionCompress(sessionId: string, enabled: boolean): Promise<MemoryConfigView> {
+  return request<MemoryConfigView>(API_PREFIX + '/session', {
+    method: 'PUT',
+    body: JSON.stringify({ sessionId, compress: enabled }),
   })
 }

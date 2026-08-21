@@ -6,12 +6,15 @@
 
 /** One session-level override. Absent means "follow the global switch". */
 export interface SessionOverride {
+  /** Per-session memory automation switch (auto-init + auto-maintain). */
   enabled?: boolean
+  /** Per-session compression switch; absent = follow the global autoCompress. */
+  compressEnabled?: boolean
 }
 
 /** The effective plugin configuration (global switches + per-session overrides). */
 export interface MemoryConfig {
-  /** Master switch: off disables skill registration, guidance, init, maintain. */
+  /** Master switch: off disables skill registration, guidance, init, maintain, compress. */
   enabled: boolean
   /** Auto-init MEMORY.md + memory/ templates at session start. */
   autoInit: boolean
@@ -19,8 +22,14 @@ export interface MemoryConfig {
   autoMaintain: boolean
   /** Announce the memory workflow in the system prompt. */
   announceToAgent: boolean
+  /** Auto-compress MEMORY.md + memory/ once the session counter reaches the interval. */
+  autoCompress: boolean
+  /** Sessions between compressions (per project cwd). */
+  compressInterval: number
   /** Per-session overrides keyed by session id. */
   sessions: Record<string, SessionOverride>
+  /** Per-project session counters keyed by cwd (internal, persisted). */
+  counts: Record<string, number>
 }
 
 /** Defaults applied when a config document (file or request) omits a field. */
@@ -29,7 +38,10 @@ export const DEFAULT_CONFIG: MemoryConfig = {
   autoInit: true,
   autoMaintain: true,
   announceToAgent: true,
+  autoCompress: true,
+  compressInterval: 5,
   sessions: {},
+  counts: {},
 }
 
 /** Config file name under ~/.dsh/. */

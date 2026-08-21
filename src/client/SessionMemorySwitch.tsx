@@ -7,7 +7,7 @@
  */
 import { useEffect, useState, type ReactElement } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { fetchConfig, updateSession } from './api.ts'
+import { fetchConfig, updateSession, updateSessionCompress } from './api.ts'
 import css from './memory.module.css'
 
 /** Composed props: the dock's session/input owner share + this plugin's locale. */
@@ -41,6 +41,8 @@ export function SessionMemorySwitch(props: SessionMemorySwitchProps): ReactEleme
   const [loading, setLoading] = useState(true)
   const [globalEnabled, setGlobalEnabled] = useState(true)
   const [sessionOn, setSessionOn] = useState(true)
+  const [compressOn, setCompressOn] = useState(true)
+  const [compressInterval, setCompressInterval] = useState(5)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | undefined>()
 
@@ -56,6 +58,8 @@ export function SessionMemorySwitch(props: SessionMemorySwitchProps): ReactEleme
         if (!alive) return
         setGlobalEnabled(config.enabled)
         setSessionOn(config.sessions[sessionId]?.enabled ?? true)
+        setCompressOn(config.sessions[sessionId]?.compressEnabled ?? config.autoCompress)
+        setCompressInterval(config.compressInterval)
         setLoading(false)
       })
       .catch((cause: unknown) => {
@@ -87,6 +91,21 @@ export function SessionMemorySwitch(props: SessionMemorySwitchProps): ReactEleme
     }
   }
 
+  const toggleCompress = async (): Promise<void> => {
+    if (busy) return
+    setBusy(true)
+    setError(undefined)
+    try {
+      const next = await updateSessionCompress(sessionId, !compressOn)
+      setCompressOn(next.sessions[sessionId]?.compressEnabled ?? next.autoCompress)
+      setGlobalEnabled(next.enabled)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div data-dsh-plugin="project-memory" data-dsh-part="session-switch" className={css.dock}>
       <button
@@ -105,17 +124,30 @@ export function SessionMemorySwitch(props: SessionMemorySwitchProps): ReactEleme
         ? (
           <div className={css.dockBody}>
             {error !== undefined ? <span className={css.dockError}>{t('switch.error')}: {error}</span> : null}
-            <label className={css.dockLabel} title={on ? t('switch.hintOn') : t('switch.hintOff')}>
-              <span className={css.dockHint}>{on ? t('switch.hintOn') : t('switch.hintOff')}</span>
-              <input
-                type="checkbox"
-                role="switch"
-                className={css.switch}
-                checked={on}
-                disabled={!globalEnabled || busy}
-                onChange={() => { void toggle() }}
-              />
-            </label>
+            <div className={css.dockRows}>
+              <label className={css.dockLabel} title={on ? t('switch.hintOn') : t('switch.hintOff')}>
+                <span className={css.dockHint}>{on ? t('switch.hintOn') : t('switch.hintOff')}</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className={css.switch}
+                  checked={on}
+                  disabled={!globalEnabled || busy}
+                  onChange={() => { void toggle() }}
+                />
+              </label>
+              <label className={css.dockLabel} title={compressOn ? t('switch.compressHintOn', { interval: compressInterval }) : t('switch.compressHintOff')}>
+                <span className={css.dockHint}>{compressOn ? t('switch.compressLabel') + ' · ' + t('switch.on') : t('switch.compressLabel') + ' · ' + t('switch.off')}</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className={css.switch}
+                  checked={compressOn}
+                  disabled={!globalEnabled || busy}
+                  onChange={() => { void toggleCompress() }}
+                />
+              </label>
+            </div>
           </div>
         )
         : null}

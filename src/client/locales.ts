@@ -35,6 +35,8 @@ export const zh = {
   'settings.autoMaintainHint': '每轮实际工作结束后引导模型写/更新当日记忆并更新索引。',
   'settings.announce': '向 Agent 注入指引',
   'settings.announceHint': '在系统提示中注入"本项目默认使用记忆模板"的工作流。',
+  'settings.autoCompress': '自动压缩',
+  'settings.autoCompressHint': '会话计数满后自动压缩 MEMORY.md 索引与 memory/ 旧文件（保留最近 10 条索引与最近 5 个文件，默认每 5 次会话）。',
   // per-session switch copy
   'switch.label': '项目记忆',
   'switch.on': '已开启',
@@ -42,6 +44,9 @@ export const zh = {
   'switch.hintOn': '本会话启用项目记忆（自动初始化 + 自动收尾）',
   'switch.hintOff': '本会话已关闭项目记忆',
   'switch.error': '读写配置失败',
+  'switch.compressLabel': '记忆压缩',
+  'switch.compressHintOn': '本会话启用自动压缩（每 {interval} 次会话）',
+  'switch.compressHintOff': '本会话已关闭自动压缩',
 }
 
 /** English copy (full key-set mirror). */
@@ -72,12 +77,17 @@ export const en: Record<keyof typeof zh, string> = {
   'settings.autoMaintainHint': 'Steer the model to write/update the daily memory and the index after each worked turn.',
   'settings.announce': 'Announce to agent',
   'settings.announceHint': 'Inject the "this project uses the memory template by default" workflow into the system prompt.',
+  'settings.autoCompress': 'Auto-compress',
+  'settings.autoCompressHint': 'Auto-compress the MEMORY.md index and old memory/ files once the session counter reaches the interval (keeps the newest 10 index rows and the newest 5 daily files).',
   'switch.label': 'Project memory',
   'switch.on': 'On',
   'switch.off': 'Off',
   'switch.hintOn': 'This session uses project memory (auto-init + auto-maintain)',
   'switch.hintOff': 'Project memory is off for this session',
   'switch.error': 'Failed to read/write config',
+  'switch.compressLabel': 'Memory compression',
+  'switch.compressHintOn': 'Auto-compress is on for this session (every {interval} sessions)',
+  'switch.compressHintOff': 'Auto-compress is off for this session',
 }
 
 /** Union of dictionary keys (the LocaleNamespaceMap value). */

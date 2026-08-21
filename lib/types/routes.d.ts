@@ -1,10 +1,3 @@
-/**
- * The /api/dsh-project-memory route family: GET/PUT the plugin config and
- * PUT one session override. Every route carries the same loopback-only trust
- * fence as the dsh-ssh / dsh-desktop-launcher routes — this endpoint writes
- * files on the host machine, so LAN-exposed dsh web deployments must not
- * serve it.
- */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver';
 import type { MemoryStore } from './store.ts';

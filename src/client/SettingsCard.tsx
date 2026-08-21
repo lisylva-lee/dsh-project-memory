@@ -17,7 +17,7 @@ import type { CardShell, FieldState } from './settings-form.ts'
 export type SettingsCardProps = PropsRuntime<'web-ui.plugin.item'> & PropsLocale<'dsh-project-memory'>
 
 /** The boolean fields this card edits. */
-const FIELD_IDS = ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent'] as const
+const FIELD_IDS = ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent', 'autoCompress'] as const
 type FieldId = typeof FIELD_IDS[number]
 
 /** Read one boolean field off the config. */
@@ -97,6 +97,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
         autoInit: draft.autoInit,
         autoMaintain: draft.autoMaintain,
         announceToAgent: draft.announceToAgent,
+        autoCompress: draft.autoCompress,
       } satisfies GlobalConfigPatch)
       setConfig(next)
       setDraft(next)
@@ -169,6 +170,18 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
         {...fieldState('announceToAgent')}
         onEdit={onEdit('announceToAgent')}
         onReset={onReset('announceToAgent')}
+      />
+      <BooleanField
+        id="settings-project-memory-auto-compress"
+        label={t('settings.autoCompress')}
+        hint={t('settings.autoCompressHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...fieldState('autoCompress')}
+        onEdit={onEdit('autoCompress')}
+        onReset={onReset('autoCompress')}
       />
     </PluginSettingsCard>
   )

@@ -32,12 +32,17 @@ export declare const zh: {
     'settings.autoMaintainHint': string;
     'settings.announce': string;
     'settings.announceHint': string;
+    'settings.autoCompress': string;
+    'settings.autoCompressHint': string;
     'switch.label': string;
     'switch.on': string;
     'switch.off': string;
     'switch.hintOn': string;
     'switch.hintOff': string;
     'switch.error': string;
+    'switch.compressLabel': string;
+    'switch.compressHintOn': string;
+    'switch.compressHintOff': string;
 };
 /** English copy (full key-set mirror). */
 export declare const en: Record<keyof typeof zh, string>;
@@ -74,12 +79,17 @@ export declare const dictionaries: {
         'settings.autoMaintainHint': string;
         'settings.announce': string;
         'settings.announceHint': string;
+        'settings.autoCompress': string;
+        'settings.autoCompressHint': string;
         'switch.label': string;
         'switch.on': string;
         'switch.off': string;
         'switch.hintOn': string;
         'switch.hintOff': string;
         'switch.error': string;
+        'switch.compressLabel': string;
+        'switch.compressHintOn': string;
+        'switch.compressHintOff': string;
     };
-    en: Record<"settings.collapse" | "settings.expand" | "settings.notExposed" | "settings.unsaved" | "settings.readOnly" | "settings.saveFailed" | "settings.discard" | "settings.save" | "settings.saving" | "settings.overridden" | "settings.reset" | "settings.invalidNumber" | "settings.inherit" | "settings.on" | "settings.off" | "settings.title" | "settings.description" | "settings.loading" | "settings.enabled" | "settings.enabledHint" | "settings.autoInit" | "settings.autoInitHint" | "settings.autoMaintain" | "settings.autoMaintainHint" | "settings.announce" | "settings.announceHint" | "switch.label" | "switch.on" | "switch.off" | "switch.hintOn" | "switch.hintOff" | "switch.error", string>;
+    en: Record<"settings.collapse" | "settings.expand" | "settings.notExposed" | "settings.unsaved" | "settings.readOnly" | "settings.saveFailed" | "settings.discard" | "settings.save" | "settings.saving" | "settings.overridden" | "settings.reset" | "settings.invalidNumber" | "settings.inherit" | "settings.on" | "settings.off" | "settings.title" | "settings.description" | "settings.loading" | "settings.enabled" | "settings.enabledHint" | "settings.autoInit" | "settings.autoInitHint" | "settings.autoMaintain" | "settings.autoMaintainHint" | "settings.announce" | "settings.announceHint" | "settings.autoCompress" | "settings.autoCompressHint" | "switch.label" | "switch.on" | "switch.off" | "switch.hintOn" | "switch.hintOff" | "switch.error" | "switch.compressLabel" | "switch.compressHintOn" | "switch.compressHintOff", string>;
 };

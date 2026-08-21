@@ -1,12 +1,16 @@
 /**
- * The /api/dsh-project-memory route family: GET/PUT the plugin config and
- * PUT one session override. Every route carries the same loopback-only trust
- * fence as the dsh-ssh / dsh-desktop-launcher routes — this endpoint writes
- * files on the host machine, so LAN-exposed dsh web deployments must not
- * serve it.
+ * The /api/dsh-project-memory route family: GET/PUT the plugin config, PUT
+ * one session override (memory and/or compression), GET the per-project
+ * compression counter and POST a manual compression. Every route carries the
+ * same loopback-only trust fence as the dsh-ssh / dsh-desktop-launcher routes
+ * — this endpoint writes files on the host machine, so LAN-exposed dsh web
+ * deployments must not serve it.
  */
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
+import { runCompression } from './core/compress.ts'
 import { API_PREFIX, DEFAULT_CONFIG } from './core/contract.ts'
 import type { MemoryStore } from './store.ts'
 
@@ -45,6 +49,11 @@ export async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   }
 }
 
+/** Whether the body's named value is a boolean or null. */
+function isBoolOrNull(value: unknown): value is boolean | null {
+  return value === null || typeof value === 'boolean'
+}
+
 /**
  * Build the config route family.
  * @param store - the config store.
@@ -78,9 +87,14 @@ export function makeRoutes(store: MemoryStore, onChange: () => void): WebRoute[]
             autoInit?: boolean
             autoMaintain?: boolean
             announceToAgent?: boolean
+            autoCompress?: boolean
+            compressInterval?: number
           } = {}
-          for (const key of ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent'] as const) {
+          for (const key of ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent', 'autoCompress'] as const) {
             if (typeof patch[key] === 'boolean') clean[key] = patch[key] as boolean
+          }
+          if (typeof patch.compressInterval === 'number' && Number.isInteger(patch.compressInterval) && patch.compressInterval >= 1) {
+            clean.compressInterval = patch.compressInterval
           }
           const next = store.updateGlobal(clean)
           onChange()
@@ -108,18 +122,78 @@ export function makeRoutes(store: MemoryStore, onChange: () => void): WebRoute[]
           writeJson(res, 400, { error: 'invalid JSON body' })
           return
         }
-        const { sessionId, enabled } = body as { sessionId?: unknown; enabled?: unknown }
+        const { sessionId, enabled, compress } = body as { sessionId?: unknown; enabled?: unknown; compress?: unknown }
         if (typeof sessionId !== 'string' || sessionId === '') {
           writeJson(res, 400, { error: 'sessionId required' })
           return
         }
-        if (enabled !== null && typeof enabled !== 'boolean') {
+        if (enabled === undefined && compress === undefined) {
+          writeJson(res, 400, { error: 'enabled or compress required' })
+          return
+        }
+        if (enabled !== undefined && !isBoolOrNull(enabled)) {
           writeJson(res, 400, { error: 'enabled must be a boolean (or null to clear)' })
           return
         }
-        const next = store.setSession(sessionId, enabled === null ? null : enabled)
+        if (compress !== undefined && !isBoolOrNull(compress)) {
+          writeJson(res, 400, { error: 'compress must be a boolean (or null to clear)' })
+          return
+        }
+        let next = store.load() ?? DEFAULT_CONFIG
+        if (enabled !== undefined) next = store.setSession(sessionId, enabled as boolean | null)
+        if (compress !== undefined) next = store.setSessionCompress(sessionId, compress as boolean | null)
         onChange()
         writeJson(res, 200, next)
+      },
+    },
+    {
+      kind: 'exact',
+      path: API_PREFIX + '/count',
+      handler: async (req, res) => {
+        if (!isLoopbackRequest(req)) {
+          writeJson(res, 403, { error: 'forbidden: loopback-only' })
+          return
+        }
+        if ((req.method ?? 'GET') !== 'GET') {
+          writeJson(res, 405, { error: 'method not allowed: ' + (req.method ?? 'GET') })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://x')
+        const cwd = url.searchParams.get('cwd')
+        const config = store.load() ?? DEFAULT_CONFIG
+        writeJson(res, 200, {
+          cwd,
+          count: cwd ? (config.counts[cwd] ?? 0) : 0,
+          interval: config.compressInterval,
+        })
+      },
+    },
+    {
+      kind: 'exact',
+      path: API_PREFIX + '/compress-now',
+      handler: async (req, res) => {
+        if (!isLoopbackRequest(req)) {
+          writeJson(res, 403, { error: 'forbidden: loopback-only' })
+          return
+        }
+        const method = req.method ?? 'GET'
+        if (method !== 'POST') {
+          writeJson(res, 405, { error: 'method not allowed: ' + method })
+          return
+        }
+        const body = await readJsonBody(req)
+        if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+          writeJson(res, 400, { error: 'invalid JSON body' })
+          return
+        }
+        const { cwd } = body as { cwd?: unknown }
+        if (typeof cwd !== 'string' || cwd === '' || !existsSync(join(cwd, 'MEMORY.md'))) {
+          writeJson(res, 400, { error: 'invalid cwd' })
+          return
+        }
+        const results = runCompression(cwd)
+        store.setCount(cwd, 0)
+        writeJson(res, 200, results)
       },
     },
   ]

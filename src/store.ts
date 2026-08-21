@@ -21,6 +21,22 @@ function toBool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
+function toInterval(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 ? value : fallback
+}
+
+function toCounts(raw: unknown): Record<string, number> {
+  const counts: Record<string, number> = {}
+  if (isRecord(raw)) {
+    for (const [cwd, value] of Object.entries(raw)) {
+      if (cwd !== '' && typeof value === 'number' && Number.isInteger(value) && value >= 0) {
+        counts[cwd] = value
+      }
+    }
+  }
+  return counts
+}
+
 /** Validate/normalize an untrusted config document (file or request body). */
 export function normalizeConfig(raw: unknown): MemoryConfig {
   const base = { ...DEFAULT_CONFIG }
@@ -29,7 +45,10 @@ export function normalizeConfig(raw: unknown): MemoryConfig {
   if (isRecord(raw.sessions)) {
     for (const [id, entry] of Object.entries(raw.sessions)) {
       if (id === '' || !isRecord(entry)) continue
-      if (typeof entry.enabled === 'boolean') sessions[id] = { enabled: entry.enabled }
+      const override: SessionOverride = {}
+      if (typeof entry.enabled === 'boolean') override.enabled = entry.enabled
+      if (typeof entry.compressEnabled === 'boolean') override.compressEnabled = entry.compressEnabled
+      if (override.enabled !== undefined || override.compressEnabled !== undefined) sessions[id] = override
     }
   }
   return {
@@ -37,8 +56,21 @@ export function normalizeConfig(raw: unknown): MemoryConfig {
     autoInit: toBool(raw.autoInit, base.autoInit),
     autoMaintain: toBool(raw.autoMaintain, base.autoMaintain),
     announceToAgent: toBool(raw.announceToAgent, base.announceToAgent),
+    autoCompress: toBool(raw.autoCompress, base.autoCompress),
+    compressInterval: toInterval(raw.compressInterval, base.compressInterval),
     sessions,
+    counts: toCounts(raw.counts),
   }
+}
+
+/** Global switches a config PUT may patch. */
+export interface GlobalPatch {
+  enabled?: boolean
+  autoInit?: boolean
+  autoMaintain?: boolean
+  announceToAgent?: boolean
+  autoCompress?: boolean
+  compressInterval?: number
 }
 
 /** Atomic file store for the plugin config. */
@@ -71,12 +103,7 @@ export class MemoryStore {
   }
 
   /** Merge global switches into the document and persist. */
-  updateGlobal(patch: {
-    enabled?: boolean
-    autoInit?: boolean
-    autoMaintain?: boolean
-    announceToAgent?: boolean
-  }): MemoryConfig {
+  updateGlobal(patch: GlobalPatch): MemoryConfig {
     const current = this.load() ?? DEFAULT_CONFIG
     const next = normalizeConfig({
       ...current,
@@ -84,21 +111,63 @@ export class MemoryStore {
       ...(patch.autoInit !== undefined ? { autoInit: patch.autoInit } : {}),
       ...(patch.autoMaintain !== undefined ? { autoMaintain: patch.autoMaintain } : {}),
       ...(patch.announceToAgent !== undefined ? { announceToAgent: patch.announceToAgent } : {}),
+      ...(patch.autoCompress !== undefined ? { autoCompress: patch.autoCompress } : {}),
+      ...(patch.compressInterval !== undefined ? { compressInterval: patch.compressInterval } : {}),
     })
     this.save(next)
     return next
   }
 
-  /** Set (boolean) or clear (null) one session override, then persist. */
+  /** Set (boolean) or clear (null) one session memory override, then persist. */
   setSession(sessionId: string, enabled: boolean | null): MemoryConfig {
     const current = this.load() ?? DEFAULT_CONFIG
     const sessions = { ...current.sessions }
+    const entry = { ...sessions[sessionId] }
     if (enabled === null) {
+      delete entry.enabled
+    } else {
+      entry.enabled = enabled
+    }
+    if (entry.enabled === undefined && entry.compressEnabled === undefined) {
       delete sessions[sessionId]
     } else {
-      sessions[sessionId] = { enabled }
+      sessions[sessionId] = entry
     }
     const next = normalizeConfig({ ...current, sessions })
+    this.save(next)
+    return next
+  }
+
+  /** Set (boolean) or clear (null) one session compression override, then persist. */
+  setSessionCompress(sessionId: string, compressEnabled: boolean | null): MemoryConfig {
+    const current = this.load() ?? DEFAULT_CONFIG
+    const sessions = { ...current.sessions }
+    const entry = { ...sessions[sessionId] }
+    if (compressEnabled === null) {
+      delete entry.compressEnabled
+    } else {
+      entry.compressEnabled = compressEnabled
+    }
+    if (entry.enabled === undefined && entry.compressEnabled === undefined) {
+      delete sessions[sessionId]
+    } else {
+      sessions[sessionId] = entry
+    }
+    const next = normalizeConfig({ ...current, sessions })
+    this.save(next)
+    return next
+  }
+
+  /** Set one per-project session counter (0 removes the key), then persist. */
+  setCount(cwd: string, count: number): MemoryConfig {
+    const current = this.load() ?? DEFAULT_CONFIG
+    const counts = { ...current.counts }
+    if (count <= 0) {
+      delete counts[cwd]
+    } else {
+      counts[cwd] = count
+    }
+    const next = normalizeConfig({ ...current, counts })
     this.save(next)
     return next
   }

@@ -3,6 +3,15 @@ import { type MemoryConfig } from './core/contract.ts';
 export declare function configPath(home?: string): string;
 /** Validate/normalize an untrusted config document (file or request body). */
 export declare function normalizeConfig(raw: unknown): MemoryConfig;
+/** Global switches a config PUT may patch. */
+export interface GlobalPatch {
+    enabled?: boolean;
+    autoInit?: boolean;
+    autoMaintain?: boolean;
+    announceToAgent?: boolean;
+    autoCompress?: boolean;
+    compressInterval?: number;
+}
 /** Atomic file store for the plugin config. */
 export declare class MemoryStore {
     private readonly path;
@@ -15,12 +24,11 @@ export declare class MemoryStore {
     /** Persist a full config document (atomic tmp+rename, mode 0600). */
     save(config: MemoryConfig): void;
     /** Merge global switches into the document and persist. */
-    updateGlobal(patch: {
-        enabled?: boolean;
-        autoInit?: boolean;
-        autoMaintain?: boolean;
-        announceToAgent?: boolean;
-    }): MemoryConfig;
-    /** Set (boolean) or clear (null) one session override, then persist. */
+    updateGlobal(patch: GlobalPatch): MemoryConfig;
+    /** Set (boolean) or clear (null) one session memory override, then persist. */
     setSession(sessionId: string, enabled: boolean | null): MemoryConfig;
+    /** Set (boolean) or clear (null) one session compression override, then persist. */
+    setSessionCompress(sessionId: string, compressEnabled: boolean | null): MemoryConfig;
+    /** Set one per-project session counter (0 removes the key), then persist. */
+    setCount(cwd: string, count: number): MemoryConfig;
 }
