@@ -1,4 +1,4 @@
-# @linxin666/dsh-project-memory
+# dsh-project-memory
 
 [English](README.md) | 中文
 
@@ -9,7 +9,7 @@
 ## 是什么
 
 - **GUI 插件配置**：设置 → 插件配置 → Web UI 插件 卡片内有「项目记忆」设置卡
-  （任务看板式折叠卡片，默认收起、点击展开），四个开关（主开关 / 自动初始化 /
+  （全家桶共享折叠卡片，默认收起、点击展开），四个开关（主开关 / 自动初始化 /
   自动收尾 / 向 Agent 注入指引），保存后即时生效。
 - **每会话开关**：每个会话底部（输入框上方）有「项目记忆」开关，默认折叠成一行
   （标签 + 当前状态 + 展开箭头），点击展开可切换；关掉该会话即不自动初始化与
@@ -27,9 +27,16 @@
 
 ## 安装
 
+在 dsh 安装目录执行（本仓库为私有仓库时，请先确保本机已通过
+`gh auth login` 或 SSH key 认证 GitHub）：
+
 ```sh
-# 在 dsh 安装目录执行
-node lib/bin.js plugin --profile web add link:<本仓库路径>/packages/dsh-project-memory
+# 方式一：从 GitHub 安装
+cd "D:/deepseek-harness/DeepSeek Harness/resources/harness"
+node lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+
+# 方式二：本地 link 安装（开发调试用）
+node lib/bin.js plugin --profile web add link:<本仓库路径>/dsh-project-memory
 ```
 
 安装后重启 `dsh web` 生效。
@@ -37,6 +44,7 @@ node lib/bin.js plugin --profile web add link:<本仓库路径>/packages/dsh-pro
 ## 开发
 
 ```sh
+pnpm install
 pnpm --filter @linxin666/dsh-project-memory typecheck
 pnpm --filter @linxin666/dsh-project-memory test
 pnpm --filter @linxin666/dsh-project-memory build

@@ -1,4 +1,4 @@
-# @linxin666/dsh-project-memory
+# dsh-project-memory
 
 English | [中文](README.zh.md)
 
@@ -10,7 +10,7 @@ auto-remembered and categorized.
 ## What it does
 
 - **GUI plugin configuration**: a "Project Memory" card inside Settings →
-  Plugin configuration → Web UI plugins (a task-board-style collapsible card,
+  Plugin configuration → Web UI plugins (family-shared collapsible card,
   collapsed by default, expand on click), with four switches (master /
   auto-init / auto-maintain / announce to agent). Saving applies immediately.
 - **Per-session switch**: every conversation shows a "Project memory" control
@@ -34,9 +34,16 @@ auto-remembered and categorized.
 
 ## Install
 
+Run inside the dsh installation directory (for a private repo, make sure this
+machine is authenticated to GitHub via `gh auth login` or an SSH key):
+
 ```sh
-# run inside the dsh installation directory
-node lib/bin.js plugin --profile web add link:<this repo>/packages/dsh-project-memory
+# Option 1: install from GitHub
+cd "D:/deepseek-harness/DeepSeek Harness/resources/harness"
+node lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+
+# Option 2: local link install (development)
+node lib/bin.js plugin --profile web add link:<path to this repo>/dsh-project-memory
 ```
 
 Restart `dsh web` after installing.
@@ -44,6 +51,7 @@ Restart `dsh web` after installing.
 ## Development
 
 ```sh
+pnpm install
 pnpm --filter @linxin666/dsh-project-memory typecheck
 pnpm --filter @linxin666/dsh-project-memory test
 pnpm --filter @linxin666/dsh-project-memory build
