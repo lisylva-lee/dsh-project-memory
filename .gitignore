@@ -3,3 +3,9 @@ node_modules/
 .DS_Store
 MEMORY.md
 memory/
+
+# keep the bundled memory templates tracked
+!assets/templates/
+!assets/templates/MEMORY.md
+!assets/templates/memory/
+!assets/templates/memory/_TEMPLATE.md
