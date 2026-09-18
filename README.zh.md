@@ -33,27 +33,40 @@
 
 ## 安装
 
-在 dsh 安装目录执行（本仓库为私有仓库时，请先确保本机已通过
-`gh auth login` 或 SSH key 认证 GitHub）：
+图形界面安装：**设置 → 插件 → 工坊市场**（或插件管理）里搜索
+`@lisylva-lee/dsh-project-memory`。
+
+命令行安装——下面是 DSH Desktop v0.3.23 内置运行时里的 CLI 用法（原生
+`dsh web` 安装则直接用 `dsh plugin ...`）：
 
 ```sh
-# 方式一：从 GitHub 安装
-cd "D:/deepseek-harness/DeepSeek Harness/resources/harness"
-node lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+# DSH Desktop v0.3.23：内置 node + 内置 dsh 宿主
+NODE="D:/deepseek-harness/DeepSeek Harness/resources/runtime/node/node.exe"
+BIN="D:/deepseek-harness/DeepSeek Harness/resources/runtime/host/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+# 方式一：从 GitHub 安装（lib/ 已随仓库提交，装完即用，无需在安装时构建）
+"$NODE" "$BIN" plugin --profile web add github:lisylva-lee/dsh-project-memory
 
 # 方式二：本地 link 安装（开发调试用）
-node lib/bin.js plugin --profile web add link:<本仓库路径>/dsh-project-memory
+"$NODE" "$BIN" plugin --profile web add link:<本仓库路径>/dsh-project-memory
 ```
 
-安装后重启 `dsh web` 生效。
+安装后重启桌面端（或 `dsh web`）生效。
+
+要求宿主 `dsh >= 0.1.5-rc.1`（写在 `dsh.engines.dsh` 里，插件管理器会据此判定
+兼容性）；本仓库的客户端模块表与 0.1.5-rc.1 外壳一致（见
+`build/web-platform.ts`）。
 
 ## 开发
 
+仓库自带完整构建配置（`build/tsdown.client.ts` + `build/web-platform.ts`），
+**不依赖任何 monorepo**：
+
 ```sh
 pnpm install
-pnpm --filter @linxin666/dsh-project-memory typecheck
-pnpm --filter @linxin666/dsh-project-memory test
-pnpm --filter @linxin666/dsh-project-memory build
+pnpm run typecheck
+pnpm run test
+pnpm run build        # tsc 出 lib/types，tsdown 出 lib/index.js 与 lib/client.js
 ```
 
 ## 说明
@@ -61,4 +74,5 @@ pnpm --filter @linxin666/dsh-project-memory build
 - 自动收尾只对顶层 agent、有实际工具调用的 turn 触发一次；无可沉淀内容时模型
   直接回复「本轮无需沉淀」。
 - 与 `dsh-memoir`（机器记忆）并行不冲突：本插件写人读版记忆。
-- 卸载：`node lib/bin.js plugin --profile web remove @linxin666/dsh-project-memory`。
+- 卸载：`"$NODE" "$BIN" plugin --profile web remove @lisylva-lee/dsh-project-memory`
+  （或在插件管理界面里关掉/移除）。

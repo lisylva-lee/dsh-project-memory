@@ -215,7 +215,9 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       const agent = payload?.agent
       if (!agent || isSubagentSession(agent)) return
       if (payload.signal?.aborted) return
-      const events = agent.session?.events ?? []
+      // `Session.events` was replaced by the explicit log accessors in the
+      // 0.1.5 cohort: snapshotEvents() materializes the whole current log.
+      const events = agent.session?.snapshotEvents() ?? []
       const turn = payload.turn ?? -1
       if (!turnActivity(events, turn).worked) return
       const sessionId = agent.session?.header?.id

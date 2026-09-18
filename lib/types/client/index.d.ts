@@ -9,7 +9,7 @@
  * Failure policy: registration failures are logged, never thrown — an
  * external plugin must not take the GUI down.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { type ProjectMemoryKey } from './locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface LocaleNamespaceMap {

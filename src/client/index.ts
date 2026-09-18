@@ -9,7 +9,11 @@
  * Failure policy: registration failures are logged, never thrown — an
  * external plugin must not take the GUI down.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+// The client context is the plain cordis Context; the former
+// `@deepseek-ai/dsh-client-runtime/client` facade is gone in the 0.1.5+ cohort.
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+// Type-only: declares the `slots` service this half consumes (ctx.slots).
+import type {} from './slots.ts'
 // Type-only: pulls the ui-slots SlotMap merge.
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).

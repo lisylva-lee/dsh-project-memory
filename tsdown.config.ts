@@ -1,13 +1,13 @@
 /**
  * Standalone tsdown config for the project-memory plugin.
  *
- * Uses the repo's shared client-bundle preset (shared/tsdown.client.ts —
- * closure-factory artifact for window.__ModuleLoader__, CSS Modules inlined,
- * externals resolved through the loader module table). The node half builds
- * from src (tsdown compiles TS directly) and types ship from lib/types (tsc).
+ * Uses this repository's own client-bundle preset (`./build/tsdown.client.ts`) —
+ * no monorepo import — which emits the node half from `src` (tsdown compiles TS
+ * directly) and the browser half as a loader closure factory. Type declarations
+ * ship from `lib/types` (tsc, see `tsconfig.build.json`).
  */
-import { clientBundle } from '../../shared/tsdown.client.ts'
+import { clientBundle } from './build/tsdown.client.ts'
 
-export default clientBundle('@linxin666/dsh-project-memory', ['src/index.ts'], {
+export default clientBundle('@lisylva-lee/dsh-project-memory', ['src/index.ts'], {
   libExternal: ['@deepseek-ai/dsh-llm'],
 })

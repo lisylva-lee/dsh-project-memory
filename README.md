@@ -43,27 +43,40 @@ auto-remembered and categorized.
 
 ## Install
 
-Run inside the dsh installation directory (for a private repo, make sure this
-machine is authenticated to GitHub via `gh auth login` or an SSH key):
+From the GUI: **Settings → Plugins → Market** (or the plugin manager) and
+search for `@lisylva-lee/dsh-project-memory`.
+
+From a command line — the paths below are the CLI bundled inside DSH Desktop
+v0.3.23 (for a native `dsh web` install, just call `dsh plugin ...`):
 
 ```sh
-# Option 1: install from GitHub
-cd "D:/deepseek-harness/DeepSeek Harness/resources/harness"
-node lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+# DSH Desktop v0.3.23: bundled node + bundled dsh host
+NODE="D:/deepseek-harness/DeepSeek Harness/resources/runtime/node/node.exe"
+BIN="D:/deepseek-harness/DeepSeek Harness/resources/runtime/host/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+# Option 1: install from GitHub (lib/ is committed, so no build runs on install)
+"$NODE" "$BIN" plugin --profile web add github:lisylva-lee/dsh-project-memory
 
 # Option 2: local link install (development)
-node lib/bin.js plugin --profile web add link:<path to this repo>/dsh-project-memory
+"$NODE" "$BIN" plugin --profile web add link:<path to this repo>/dsh-project-memory
 ```
 
-Restart `dsh web` after installing.
+Restart the desktop app (or `dsh web`) after installing.
+
+Requires host `dsh >= 0.1.5-rc.1` (declared in `dsh.engines.dsh`, which the
+plugin manager uses to judge compatibility); this repository's client module
+table matches the 0.1.5-rc.1 shell (see `build/web-platform.ts`).
 
 ## Development
 
+The repository carries its whole build (`build/tsdown.client.ts` +
+`build/web-platform.ts`) — **no monorepo is involved**:
+
 ```sh
 pnpm install
-pnpm --filter @linxin666/dsh-project-memory typecheck
-pnpm --filter @linxin666/dsh-project-memory test
-pnpm --filter @linxin666/dsh-project-memory build
+pnpm run typecheck
+pnpm run test
+pnpm run build        # tsc emits lib/types, tsdown emits lib/index.js + lib/client.js
 ```
 
 ## Notes
@@ -72,4 +85,5 @@ pnpm --filter @linxin666/dsh-project-memory build
   there is nothing to record, the model replies "no memory needed this turn".
 - Runs in parallel with `dsh-memoir` (machine memory): this plugin writes the
   human-readable memory.
-- Uninstall: `node lib/bin.js plugin --profile web remove @linxin666/dsh-project-memory`.
+- Uninstall: `"$NODE" "$BIN" plugin --profile web remove @lisylva-lee/dsh-project-memory`
+  (or disable/remove it from the plugin manager UI).
