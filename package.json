@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-project-memory",
   "description": "project-memory skill as a DSH plugin: per-project human-readable memory (MEMORY.md + memory/YYYY-MM-DD.md) with a master switch, GUI plugin-config card and per-session toggles (memory + compression) under every conversation; auto-init at session start, auto-maintain at turn end and auto-compress every N sessions. Mounted via cordis.patch.yml, no dsh source changes.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

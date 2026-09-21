@@ -10,7 +10,7 @@ import { dshHome } from './core/home.ts'
 
 /** Resolve the config file path under the dsh home. */
 export function configPath(home: string = dshHome()): string {
-  return join(home, '.dsh', CONFIG_FILE_NAME)
+  return join(home, CONFIG_FILE_NAME)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

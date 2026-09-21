@@ -1,12 +1,13 @@
 /**
  * DSH home resolution shared by the config store and the skill/template
- * lookup. The harness convention is `${DSH_HOME:-$HOME/.dsh}`; a custom
- * DSH_HOME must win over `homedir()`, or the plugin would write its config
- * and read its skills from the wrong directory on such deployments.
+ * lookup. The harness convention is `${DSH_HOME:-$HOME/.dsh}` — DSH_HOME
+ * already IS the `.dsh` directory, so callers join directly against it
+ * (`<home>/dsh-project-memory.json`, `<home>/skills/project-memory`, ...).
  */
 import { homedir } from 'node:os'
+import { join } from 'node:path'
 
 /** Resolve the dsh home directory: $DSH_HOME when set, else ~/.dsh. */
 export function dshHome(): string {
-  return process.env.DSH_HOME ?? homedir()
+  return process.env.DSH_HOME ?? join(homedir(), '.dsh')
 }
