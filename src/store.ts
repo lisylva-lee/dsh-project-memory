@@ -4,12 +4,12 @@
  * a missing file means "no user config yet".
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { CONFIG_FILE_NAME, DEFAULT_CONFIG, type MemoryConfig, type SessionOverride } from './core/contract.ts'
+import { dshHome } from './core/home.ts'
 
 /** Resolve the config file path under the dsh home. */
-export function configPath(home: string = homedir()): string {
+export function configPath(home: string = dshHome()): string {
   return join(home, '.dsh', CONFIG_FILE_NAME)
 }
 

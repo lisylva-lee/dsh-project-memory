@@ -33,21 +33,52 @@
 
 ## 安装
 
+本包自带预构建产物（`lib/` 已提交），从 GitHub 安装无需任何构建步骤——没有
+`prepare` 脚本，也不需要 pnpm `allowBuilds` 白名单。
+
+### 方式一：CLI 安装（源码 checkout 布局）
+
 在 dsh 安装目录执行（本仓库为私有仓库时，请先确保本机已通过
 `gh auth login` 或 SSH key 认证 GitHub）：
 
 ```sh
-# 方式一：从 GitHub 安装
 cd "D:/deepseek-harness/DeepSeek Harness/resources/harness"
 node lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+```
 
-# 方式二：本地 link 安装（开发调试用）
+### 方式二：本地 link 安装（开发调试用）
+
+```sh
 node lib/bin.js plugin --profile web add link:<本仓库路径>/dsh-project-memory
 ```
 
-安装后重启 `dsh web` 生效。
+安装后重启 `dsh web` 生效（bundle 层在启动时读取，只有 profile 自己的
+`cordis.patch.yml` 支持热重载）。
+
+### DeepSeek Harness 桌面版
+
+桌面版的 CLI 位于内置运行时里：
+
+```sh
+cd "D:/DeepSeek-Harness/DeepSeek Harness/resources/runtime/host"
+node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+```
+
+- 实际生效的 profile 在用户目录 `%USERPROFILE%\.dsh\profiles\web`
+  （`package.json` → `dsh.profile.bundles` + `cordis.patch.yml`）。
+- **安装后必须重启应用**，新 bundle 层才会被启动流程装载。
+- 桌面版 profile 的 node_modules 是 CI 上打包好随应用分发的（pnpm store 元数据
+  指向不存在的 runner 路径）。因此任何依赖 pnpm 的插件操作（GUI 插件管理器的
+  安装/更新/卸载、`dsh plugin add/remove`）都要求**先停掉应用**，然后在 profile
+  目录跑一次 `pnpm install`（一次性重建 node_modules 与本地 store，约 400 MB
+  下载）。这是随包种子目录的固有限制，与本插件无关。
+- 若报 `dsh` 不在 PATH，就按上面的方式用内置 node 直接执行 bin.js。
 
 ## 开发
+
+`lib/` 已提交，独立克隆直接使用预构建产物。重新构建需要作者的 dsh-web
+monorepo 工具链（本包的 `tsdown.config.ts` 引用了 monorepo 根目录下的
+`shared/tsdown.client.ts`）：
 
 ```sh
 pnpm install
@@ -61,4 +92,6 @@ pnpm --filter @linxin666/dsh-project-memory build
 - 自动收尾只对顶层 agent、有实际工具调用的 turn 触发一次；无可沉淀内容时模型
   直接回复「本轮无需沉淀」。
 - 与 `dsh-memoir`（机器记忆）并行不冲突：本插件写人读版记忆。
+- 0.1.1 起，配置与用户技能/模板查找会优先使用 `$DSH_HOME`（缺省回退
+  `~/.dsh`）。
 - 卸载：`node lib/bin.js plugin --profile web remove @linxin666/dsh-project-memory`。
