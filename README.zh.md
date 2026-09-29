@@ -33,34 +33,53 @@
 
 ## 安装
 
-图形界面安装：**设置 → 插件 → 工坊市场**（或插件管理）里搜索
-`@lisylva-lee/dsh-project-memory`。
 
-命令行安装——下面是 DSH Desktop v0.3.23 内置运行时里的 CLI 用法（原生
-`dsh web` 安装则直接用 `dsh plugin ...`）：
+本包自带预构建产物（`lib/` 已提交），从 GitHub 安装无需任何构建步骤——没有
+`prepare` 脚本，也不需要 pnpm `allowBuilds` 白名单。
+
+### 方式一：CLI 安装（源码 checkout 布局）
+
+在 dsh 安装目录执行（本仓库为私有仓库时，请先确保本机已通过
+`gh auth login` 或 SSH key 认证 GitHub）：
 
 ```sh
-# DSH Desktop v0.3.23：内置 node + 内置 dsh 宿主
-NODE="D:/deepseek-harness/DeepSeek Harness/resources/runtime/node/node.exe"
-BIN="D:/deepseek-harness/DeepSeek Harness/resources/runtime/host/node_modules/@deepseek-ai/dsh/lib/bin.js"
-
-# 方式一：从 GitHub 安装（lib/ 已随仓库提交，装完即用，无需在安装时构建）
-"$NODE" "$BIN" plugin --profile web add github:lisylva-lee/dsh-project-memory
-
-# 方式二：本地 link 安装（开发调试用）
-"$NODE" "$BIN" plugin --profile web add link:<本仓库路径>/dsh-project-memory
+cd "D:/deepseek-harness/DeepSeek Harness/resources/harness"
+node lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
 ```
 
-安装后重启桌面端（或 `dsh web`）生效。
+### 方式二：本地 link 安装（开发调试用）
 
-要求宿主 `dsh >= 0.1.5-rc.1`（写在 `dsh.engines.dsh` 里，插件管理器会据此判定
-兼容性）；本仓库的客户端模块表与 0.1.5-rc.1 外壳一致（见
-`build/web-platform.ts`）。
+```sh
+node lib/bin.js plugin --profile web add link:<本仓库路径>/dsh-project-memory
+```
+
+安装后重启 `dsh web` 生效（bundle 层在启动时读取，只有 profile 自己的
+`cordis.patch.yml` 支持热重载）。
+
+### DeepSeek Harness 桌面版
+
+桌面版的 CLI 位于内置运行时里：
+
+```sh
+cd "D:/DeepSeek-Harness/DeepSeek Harness/resources/runtime/host"
+node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+```
+
+- 实际生效的 profile 在用户目录 `%USERPROFILE%\.dsh\profiles\web`
+  （`package.json` → `dsh.profile.bundles` + `cordis.patch.yml`）。
+- **安装后必须重启应用**，新 bundle 层才会被启动流程装载。
+- 桌面版 profile 的 node_modules 是 CI 上打包好随应用分发的（pnpm store 元数据
+  指向不存在的 runner 路径）。因此任何依赖 pnpm 的插件操作（GUI 插件管理器的
+  安装/更新/卸载、`dsh plugin add/remove`）都要求**先停掉应用**，然后在 profile
+  目录跑一次 `pnpm install`（一次性重建 node_modules 与本地 store，约 400 MB
+  下载）。这是随包种子目录的固有限制，与本插件无关。
+- 若报 `dsh` 不在 PATH，就按上面的方式用内置 node 直接执行 bin.js。
 
 ## 开发
 
-仓库自带完整构建配置（`build/tsdown.client.ts` + `build/web-platform.ts`），
-**不依赖任何 monorepo**：
+`lib/` 已提交，独立克隆直接使用预构建产物。重新构建需要作者的 dsh-web
+monorepo 工具链（本包的 `tsdown.config.ts` 引用了 monorepo 根目录下的
+`shared/tsdown.client.ts`）：
 
 ```sh
 pnpm install
@@ -74,9 +93,11 @@ pnpm run build        # tsc 出 lib/types，tsdown 出 lib/index.js 与 lib/clie
 - 自动收尾只对顶层 agent、有实际工具调用的 turn 触发一次；无可沉淀内容时模型
   直接回复「本轮无需沉淀」。
 - 与 `dsh-memoir`（机器记忆）并行不冲突：本插件写人读版记忆。
-- 卸载：`"$NODE" "$BIN" plugin --profile web remove @lisylva-lee/dsh-project-memory`
-  （或在插件管理界面里关掉/移除）。
-## Agent workflow（agent-workflow 子模块，0.3 起）
+
+- 0.1.1 起，配置与用户技能/模板查找会优先使用 `$DSH_HOME`（缺省回退
+  `~/.dsh`）。
+- 卸载：`node lib/bin.js plugin --profile web remove @linxin666/dsh-project-memory`。
+## Agent workflow（agent-workflow 子模块）
 
 除记忆之外，插件还带一层执行纪律（可单独关掉）：
 
@@ -85,15 +106,6 @@ pnpm run build        # tsc 出 lib/types，tsdown 出 lib/index.js 与 lib/clie
 - 每轮结束跑一次廉价自检（未完成任务缺证据 / 阻塞未写原因 / 项目根散落临时文件），仅在发现缺项时提醒一次；
 - 通过 ctx.skills.register 注册 agent-workflow 运行时技能。
 
-开关（配置文件 ~/.dsh/dsh-project-memory.json 的 workflow 小节，也可由 PUT /api/dsh-project-memory/config 写入）：
-
-| 开关 | 默认 | 作用 |
-| --- | --- | --- |
-| workflow.enabled | true | 工作流总闸（技能/指引/铺开/自检） |
-| workflow.autoScaffold | true | 会话开始幂等铺开三件套 |
-| workflow.turnCheck | true | 每轮结束自检，仅在发现缺项时提醒 |
-| workflow.boardInject | true | 把看板未完成项注入系统提示 |
-
+开关：设置页插件配置卡片的 workflow 小节（总闸 / 自动铺开 / 每轮自检 / 看板注入），或配置文件 ~/.dsh/dsh-project-memory.json 的 workflow 小节，或 PUT /api/dsh-project-memory/config。
 不需要插件时也可单独安装这套模板：bash assets/workflow/install-workflow.sh <目标项目> [--force]。
-设置页的插件配置卡片里已带这四个开关（工作流小节：总闸 / 自动铺开 / 每轮自检 / 看板注入），也可直接编辑配置文件或调用 PUT 接口。
 数据只放项目内文件：插件不拥有工作流数据，卸载或崩溃都不影响可读性与可移植性。

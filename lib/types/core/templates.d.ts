@@ -1,6 +1,6 @@
 /** Absolute path of this package's assets directory (SKILL.md + templates). */
 export declare function packageAssetsRoot(): string;
-/** Default user skill root: ~/.dsh/skills/project-memory (single source of truth). */
+/** Default user skill root: <dsh home>/skills/project-memory (single source of truth). */
 export declare function defaultSkillDir(home?: string): string;
 /** Resolve the skill root: the user skill dir when present, else the bundled assets. */
 export declare function resolveSkillDir(home?: string): string;

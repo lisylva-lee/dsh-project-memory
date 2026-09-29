@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import {
   ensureMemoryInit,
   localToday,
+  packageAssetsRoot,
   renderDaily,
   renderIndex,
   stripUsageBlock,
@@ -62,6 +63,13 @@ describe('template rendering', () => {
 
   it('formats the local date as YYYY-MM-DD', () => {
     expect(localToday(new Date(2026, 7, 21))).toBe('2026-08-21')
+  })
+
+  it('resolves the packaged assets root to a directory holding SKILL.md (both src and bundled layouts)', () => {
+    // Regression: lib/index.js previously resolved ../../assets/ one level too
+    // high (node_modules/@linxin666/assets), which ENOENT-crashed apply() — the
+    // probe must land on the package's own assets/ from either layout.
+    expect(existsSync(join(packageAssetsRoot(), 'SKILL.md'))).toBe(true)
   })
 })
 

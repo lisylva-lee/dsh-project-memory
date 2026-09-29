@@ -11,35 +11,46 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { homedir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { dshHome } from './home.ts'
 
 /** Absolute path of this package's assets directory (SKILL.md + templates). */
 export function packageAssetsRoot(): string {
-  return fileURLToPath(new URL('../../assets/', import.meta.url))
+  // The module is bundled into lib/index.js, where "../assets/" resolves to
+  // the package root; running from src/ (dev/tests) needs "../../assets/".
+  // Probe both so the same code is correct in either layout.
+  const candidates = [
+    new URL('../assets/', import.meta.url),
+    new URL('../../assets/', import.meta.url),
+  ]
+  for (const url of candidates) {
+    const dir = fileURLToPath(url)
+    if (existsSync(join(dir, 'SKILL.md'))) return dir
+  }
+  return fileURLToPath(candidates[0])
 }
 
-/** Default user skill root: ~/.dsh/skills/project-memory (single source of truth). */
-export function defaultSkillDir(home: string = homedir()): string {
-  return join(home, '.dsh', 'skills', 'project-memory')
+/** Default user skill root: <dsh home>/skills/project-memory (single source of truth). */
+export function defaultSkillDir(home: string = dshHome()): string {
+  return join(home, 'skills', 'project-memory')
 }
 
 /** Resolve the skill root: the user skill dir when present, else the bundled assets. */
-export function resolveSkillDir(home: string = homedir()): string {
+export function resolveSkillDir(home: string = dshHome()): string {
   const user = defaultSkillDir(home)
   return existsSync(join(user, 'SKILL.md')) ? user : packageAssetsRoot()
 }
 
 /** Resolve the templates directory: the user skill's templates, else bundled. */
-export function resolveTemplateDir(home: string = homedir()): string {
+export function resolveTemplateDir(home: string = dshHome()): string {
   const user = defaultSkillDir(home)
   if (existsSync(join(user, 'templates', 'MEMORY.md'))) return join(user, 'templates')
   return join(packageAssetsRoot(), 'templates')
 }
 
 /** Load the skill body: the user skill's SKILL.md, else the bundled copy. */
-export function loadSkillContent(home: string = homedir()): string {
+export function loadSkillContent(home: string = dshHome()): string {
   const user = defaultSkillDir(home)
   const candidate = join(user, 'SKILL.md')
   return existsSync(candidate) ? readFileSync(candidate, 'utf8') : readFileSync(join(packageAssetsRoot(), 'SKILL.md'), 'utf8')

@@ -1,4 +1,5 @@
 {
+
   "name": "@lisylva-lee/dsh-project-memory",
   "description": "project-memory skill as a standalone DSH plugin: per-project human-readable memory (MEMORY.md + memory/YYYY-MM-DD.md) with a master switch, GUI plugin-config card and per-session toggles (memory + compression) under every conversation; auto-init at session start, auto-maintain at turn end and auto-compress every N sessions. Mounted via cordis.patch.yml, no dsh source changes.",
   "version": "0.2.0",
@@ -22,6 +23,7 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
+
       "platform": "web",
       "inject": [
         "@deepseek-ai/dsh-client-locale",
@@ -34,6 +36,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsdown",
+
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "watch": "tsdown --watch",

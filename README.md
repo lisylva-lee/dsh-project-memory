@@ -43,11 +43,15 @@ auto-remembered and categorized.
 
 ## Install
 
-From the GUI: **Settings → Plugins → Market** (or the plugin manager) and
-search for `@lisylva-lee/dsh-project-memory`.
 
-From a command line — the paths below are the CLI bundled inside DSH Desktop
-v0.3.23 (for a native `dsh web` install, just call `dsh plugin ...`):
+The package ships prebuilt artifacts (`lib/` is committed), so installing from
+GitHub requires no build step — no `prepare` script, no pnpm `allowBuilds`
+dance.
+
+### CLI install (source-checkout layout)
+
+Run inside the dsh installation directory; for a private repo, first
+authenticate this machine to GitHub via `gh auth login` or an SSH key:
 
 ```sh
 # DSH Desktop v0.3.23: bundled node + bundled dsh host
@@ -61,16 +65,37 @@ BIN="D:/deepseek-harness/DeepSeek Harness/resources/runtime/host/node_modules/@d
 "$NODE" "$BIN" plugin --profile web add link:<path to this repo>/dsh-project-memory
 ```
 
-Restart the desktop app (or `dsh web`) after installing.
 
-Requires host `dsh >= 0.1.5-rc.1` (declared in `dsh.engines.dsh`, which the
-plugin manager uses to judge compatibility); this repository's client module
-table matches the 0.1.5-rc.1 shell (see `build/web-platform.ts`).
+Restart `dsh web` after installing (bundle layers are read at boot; only the
+profile's `cordis.patch.yml` hot-reloads).
+
+### DeepSeek Harness desktop app
+
+On the desktop app the CLI lives in the bundled runtime instead:
+
+```sh
+cd "D:/DeepSeek-Harness/DeepSeek Harness/resources/runtime/host"
+node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:lisylva-lee/dsh-project-memory
+```
+
+- The active profile is user-level at `%USERPROFILE%\.dsh\profiles\web`
+  (`package.json` → `dsh.profile.bundles` + `cordis.patch.yml`).
+- **Always restart the app after install** for the new bundle layer to boot.
+- Desktop profiles ship with `node_modules` seeded by CI (pnpm store metadata
+  points at a runner path that does not exist locally). Any pnpm-based plugin
+  operation (GUI plugin manager install/update/remove, `dsh plugin add/remove`)
+  therefore needs the app **stopped** and one `pnpm install` run in the profile
+  directory first — it recreates the modules dir against a local pnpm store
+  (a one-time ~400 MB download). This is a quirk of the shipped profile seed,
+  not of this plugin.
+- If the CLI reports `dsh` is not on `PATH`, invoke it via the bundled node:
+  `node node_modules/@deepseek-ai/dsh/lib/bin.js ...` as shown above.
 
 ## Development
 
-The repository carries its whole build (`build/tsdown.client.ts` +
-`build/web-platform.ts`) — **no monorepo is involved**:
+`lib/` is committed; the standalone repo consumes the prebuilt artifacts.
+Rebuilding requires the author's dsh-web monorepo toolchain (this package's
+`tsdown.config.ts` imports `shared/tsdown.client.ts` from the monorepo root):
 
 ```sh
 pnpm install
@@ -85,9 +110,11 @@ pnpm run build        # tsc emits lib/types, tsdown emits lib/index.js + lib/cli
   there is nothing to record, the model replies "no memory needed this turn".
 - Runs in parallel with `dsh-memoir` (machine memory): this plugin writes the
   human-readable memory.
-- Uninstall: `"$NODE" "$BIN" plugin --profile web remove @lisylva-lee/dsh-project-memory`
-  (or disable/remove it from the plugin manager UI).
-## Agent workflow (agent-workflow sub-surface, since 0.3)
+
+- Config and the user skill/template lookup honor `$DSH_HOME` (falling back to
+  `~/.dsh`) since 0.1.1.
+- Uninstall: `node lib/bin.js plugin --profile web remove @linxin666/dsh-project-memory`.
+## Agent workflow (agent-workflow sub-surface)
 
 Besides memory, the plugin ships an execution-discipline layer (independently switchable):
 
@@ -96,15 +123,6 @@ Besides memory, the plugin ships an execution-discipline layer (independently sw
 - at turn end it runs cheap checks (unfinished task without evidence / blocked row without a reason / stray temp files in the project root) and nudges only when something is missing;
 - it registers an agent-workflow runtime skill through ctx.skills.register.
 
-Switches live in the workflow section of ~/.dsh/dsh-project-memory.json (also writable through PUT /api/dsh-project-memory/config):
-
-| Switch | Default | Effect |
-| --- | --- | --- |
-| workflow.enabled | true | master switch (skill/guidance/scaffold/checks) |
-| workflow.autoScaffold | true | idempotent scaffold at session start |
-| workflow.turnCheck | true | turn-end checks, only nudges when something is missing |
-| workflow.boardInject | true | inject the board summary into the system prompt |
-
+Switches: the workflow group in the plugin-config card, the workflow section of ~/.dsh/dsh-project-memory.json, or PUT /api/dsh-project-memory/config.
 Without the plugin the templates can be installed standalone: bash assets/workflow/install-workflow.sh <target> [--force].
-The four switches also appear in the plugin-config card (workflow group: master / scaffold / turn-end checks / board injection); the config file and the PUT route work as well.
 Workflow data lives only in project files - the plugin owns no data, so uninstalling or crashing it loses nothing.

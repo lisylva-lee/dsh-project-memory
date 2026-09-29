@@ -15,8 +15,8 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { dshHome } from './home.ts'
 import { fileURLToPath } from 'node:url'
 
 /** Runtime-skill name registered by the plugin. */
@@ -34,25 +34,25 @@ export function packageWorkflowAssetsRoot(): string {
 }
 
 /** Default user skill root: ~/.dsh/skills/agent-workflow. */
-export function defaultWorkflowSkillDir(home: string = homedir()): string {
-  return join(home, '.dsh', 'skills', WORKFLOW_SKILL_NAME)
+export function defaultWorkflowSkillDir(home: string = dshHome()): string {
+  return join(home, 'skills', WORKFLOW_SKILL_NAME)
 }
 
 /** Resolve the workflow skill root: the user skill dir when present, else bundled assets. */
-export function resolveWorkflowSkillDir(home: string = homedir()): string {
+export function resolveWorkflowSkillDir(home: string = dshHome()): string {
   const user = defaultWorkflowSkillDir(home)
   return existsSync(join(user, 'SKILL.md')) ? user : packageWorkflowAssetsRoot()
 }
 
 /** Resolve the workflow templates directory: the user skill's, else bundled. */
-export function resolveWorkflowTemplateDir(home: string = homedir()): string {
+export function resolveWorkflowTemplateDir(home: string = dshHome()): string {
   const user = defaultWorkflowSkillDir(home)
   if (existsSync(join(user, 'templates', POLICY_FILE))) return join(user, 'templates')
   return join(packageWorkflowAssetsRoot(), 'templates')
 }
 
 /** Load the workflow skill body: the user skill's SKILL.md, else the bundled copy. */
-export function loadWorkflowSkillContent(home: string = homedir()): string {
+export function loadWorkflowSkillContent(home: string = dshHome()): string {
   const user = defaultWorkflowSkillDir(home)
   const candidate = join(user, 'SKILL.md')
   return existsSync(candidate)
