@@ -34,6 +34,14 @@ export declare const zh: {
     'settings.announceHint': string;
     'settings.autoCompress': string;
     'settings.autoCompressHint': string;
+    'settings.workflowEnabled': string;
+    'settings.workflowEnabledHint': string;
+    'settings.workflowAutoScaffold': string;
+    'settings.workflowAutoScaffoldHint': string;
+    'settings.workflowTurnCheck': string;
+    'settings.workflowTurnCheckHint': string;
+    'settings.workflowBoardInject': string;
+    'settings.workflowBoardInjectHint': string;
     'switch.label': string;
     'switch.on': string;
     'switch.off': string;
@@ -81,6 +89,14 @@ export declare const dictionaries: {
         'settings.announceHint': string;
         'settings.autoCompress': string;
         'settings.autoCompressHint': string;
+        'settings.workflowEnabled': string;
+        'settings.workflowEnabledHint': string;
+        'settings.workflowAutoScaffold': string;
+        'settings.workflowAutoScaffoldHint': string;
+        'settings.workflowTurnCheck': string;
+        'settings.workflowTurnCheckHint': string;
+        'settings.workflowBoardInject': string;
+        'settings.workflowBoardInjectHint': string;
         'switch.label': string;
         'switch.on': string;
         'switch.off': string;
@@ -91,5 +107,5 @@ export declare const dictionaries: {
         'switch.compressHintOn': string;
         'switch.compressHintOff': string;
     };
-    en: Record<"settings.collapse" | "settings.expand" | "settings.notExposed" | "settings.unsaved" | "settings.readOnly" | "settings.saveFailed" | "settings.discard" | "settings.save" | "settings.saving" | "settings.overridden" | "settings.reset" | "settings.invalidNumber" | "settings.inherit" | "settings.on" | "settings.off" | "settings.title" | "settings.description" | "settings.loading" | "settings.enabled" | "settings.enabledHint" | "settings.autoInit" | "settings.autoInitHint" | "settings.autoMaintain" | "settings.autoMaintainHint" | "settings.announce" | "settings.announceHint" | "settings.autoCompress" | "settings.autoCompressHint" | "switch.label" | "switch.on" | "switch.off" | "switch.hintOn" | "switch.hintOff" | "switch.error" | "switch.compressLabel" | "switch.compressHintOn" | "switch.compressHintOff", string>;
+    en: Record<"settings.collapse" | "settings.expand" | "settings.notExposed" | "settings.unsaved" | "settings.readOnly" | "settings.saveFailed" | "settings.discard" | "settings.save" | "settings.saving" | "settings.overridden" | "settings.reset" | "settings.invalidNumber" | "settings.inherit" | "settings.on" | "settings.off" | "settings.title" | "settings.description" | "settings.loading" | "settings.enabled" | "settings.enabledHint" | "settings.autoInit" | "settings.autoInitHint" | "settings.autoMaintain" | "settings.autoMaintainHint" | "settings.announce" | "settings.announceHint" | "settings.autoCompress" | "settings.autoCompressHint" | "settings.workflowEnabled" | "settings.workflowEnabledHint" | "settings.workflowAutoScaffold" | "settings.workflowAutoScaffoldHint" | "settings.workflowTurnCheck" | "settings.workflowTurnCheckHint" | "settings.workflowBoardInject" | "settings.workflowBoardInjectHint" | "switch.label" | "switch.on" | "switch.off" | "switch.hintOn" | "switch.hintOff" | "switch.error" | "switch.compressLabel" | "switch.compressHintOn" | "switch.compressHintOff", string>;
 };

@@ -95,5 +95,5 @@ pnpm run build        # tsc 出 lib/types，tsdown 出 lib/index.js 与 lib/clie
 | workflow.boardInject | true | 把看板未完成项注入系统提示 |
 
 不需要插件时也可单独安装这套模板：bash assets/workflow/install-workflow.sh <目标项目> [--force]。
-GUI 卡片上的四个开关（Workflow 小节）为下一步；当前可直接编辑配置文件或调用上述 PUT 接口。
+设置页的插件配置卡片里已带这四个开关（工作流小节：总闸 / 自动铺开 / 每轮自检 / 看板注入），也可直接编辑配置文件或调用 PUT 接口。
 数据只放项目内文件：插件不拥有工作流数据，卸载或崩溃都不影响可读性与可移植性。

@@ -9,7 +9,13 @@
  */
 import { useEffect, useState, type ReactElement } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { fetchConfig, updateConfig, type GlobalConfigPatch, type MemoryConfigView } from './api.ts'
+import {
+  fetchConfig,
+  updateConfig,
+  type GlobalConfigPatch,
+  type MemoryConfigView,
+  type WorkflowConfigView,
+} from './api.ts'
 import { BooleanField, PluginSettingsCard } from './PluginSettingsCard.tsx'
 import type { CardShell, FieldState } from './settings-form.ts'
 
@@ -23,6 +29,23 @@ type FieldId = typeof FIELD_IDS[number]
 /** Read one boolean field off the config. */
 function valueOf(config: MemoryConfigView, id: FieldId): boolean {
   return config[id]
+}
+
+/** The workflow sub-switches this card edits (agent-workflow surface). */
+const WORKFLOW_IDS = ['enabled', 'autoScaffold', 'turnCheck', 'boardInject'] as const
+type WorkflowId = typeof WORKFLOW_IDS[number]
+
+/** Defaults used when the host predates the workflow sub-switches. */
+const WORKFLOW_DEFAULTS: WorkflowConfigView = {
+  enabled: true,
+  autoScaffold: true,
+  turnCheck: true,
+  boardInject: true,
+}
+
+/** Read the workflow sub-switches with a safe fallback for old hosts. */
+function workflowOf(config: MemoryConfigView): WorkflowConfigView {
+  return config.workflow ?? WORKFLOW_DEFAULTS
 }
 
 /** The plugin-config card (family chrome, collapsed by default). */
@@ -51,7 +74,9 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   // contract the settings-scope cards follow while their namespace loads).
   if (config === null || draft === null) return null
 
-  const dirty = FIELD_IDS.some(id => valueOf(draft, id) !== valueOf(config, id))
+  const dirty =
+    FIELD_IDS.some(id => valueOf(draft, id) !== valueOf(config, id)) ||
+    WORKFLOW_IDS.some(id => workflowOf(draft)[id] !== workflowOf(config)[id])
 
   const shell: CardShell = {
     available: true,
@@ -87,6 +112,22 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
     setDraft({ ...draft, [id]: true })
   }
 
+  const workflowState = (id: WorkflowId): FieldState => ({
+    text: String(workflowOf(draft)[id]),
+    overridden: false,
+    invalid: false,
+  })
+
+  const workflowEdit = (id: WorkflowId) => (text: string): void => {
+    setFailed(undefined)
+    setDraft({ ...draft, workflow: { ...workflowOf(draft), [id]: text === 'false' ? false : true } })
+  }
+
+  const workflowReset = (id: WorkflowId) => (): void => {
+    setFailed(undefined)
+    setDraft({ ...draft, workflow: { ...workflowOf(draft), [id]: true } })
+  }
+
   const save = async (): Promise<void> => {
     if (busy || !dirty) return
     setBusy(true)
@@ -98,6 +139,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
         autoMaintain: draft.autoMaintain,
         announceToAgent: draft.announceToAgent,
         autoCompress: draft.autoCompress,
+        workflow: workflowOf(draft),
       } satisfies GlobalConfigPatch)
       setConfig(next)
       setDraft(next)
@@ -182,6 +224,54 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
         {...fieldState('autoCompress')}
         onEdit={onEdit('autoCompress')}
         onReset={onReset('autoCompress')}
+      />
+      <BooleanField
+        id="settings-project-memory-workflow-enabled"
+        label={t('settings.workflowEnabled')}
+        hint={t('settings.workflowEnabledHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...workflowState('enabled')}
+        onEdit={workflowEdit('enabled')}
+        onReset={workflowReset('enabled')}
+      />
+      <BooleanField
+        id="settings-project-memory-workflow-auto-scaffold"
+        label={t('settings.workflowAutoScaffold')}
+        hint={t('settings.workflowAutoScaffoldHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...workflowState('autoScaffold')}
+        onEdit={workflowEdit('autoScaffold')}
+        onReset={workflowReset('autoScaffold')}
+      />
+      <BooleanField
+        id="settings-project-memory-workflow-turn-check"
+        label={t('settings.workflowTurnCheck')}
+        hint={t('settings.workflowTurnCheckHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...workflowState('turnCheck')}
+        onEdit={workflowEdit('turnCheck')}
+        onReset={workflowReset('turnCheck')}
+      />
+      <BooleanField
+        id="settings-project-memory-workflow-board-inject"
+        label={t('settings.workflowBoardInject')}
+        hint={t('settings.workflowBoardInjectHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...workflowState('boardInject')}
+        onEdit={workflowEdit('boardInject')}
+        onReset={workflowReset('boardInject')}
       />
     </PluginSettingsCard>
   )

@@ -81,6 +81,20 @@ describe('config routes', () => {
     expect(changed).toBe(1)
   })
 
+  it('PUT config patches the nested workflow sub-switches and drops invalid ones', async () => {
+    const captured = fakeResponse()
+    await configRoute?.handler(
+      fakeRequest('PUT', { workflow: { turnCheck: false, boardInject: 'nope', bogus: 1 } }),
+      captured.res,
+    )
+    expect(captured.status).toBe(200)
+    const workflow = (captured.body as { workflow?: Record<string, unknown> }).workflow
+    expect(workflow?.turnCheck).toBe(false)
+    expect(workflow?.boardInject).toBe(true)
+    expect(workflow?.bogus).toBeUndefined()
+    expect(workflow?.enabled).toBe(true)
+  })
+
   it('PUT session sets and clears memory and compression overrides', async () => {
     const setRes = fakeResponse()
     await sessionRoute?.handler(fakeRequest('PUT', { sessionId: 's-1', enabled: false, compress: true }), setRes.res)

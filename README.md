@@ -106,5 +106,5 @@ Switches live in the workflow section of ~/.dsh/dsh-project-memory.json (also wr
 | workflow.boardInject | true | inject the board summary into the system prompt |
 
 Without the plugin the templates can be installed standalone: bash assets/workflow/install-workflow.sh <target> [--force].
-The four GUI switches (a Workflow group in the settings card) are the next step; for now edit the config file or call the PUT route.
+The four switches also appear in the plugin-config card (workflow group: master / scaffold / turn-end checks / board injection); the config file and the PUT route work as well.
 Workflow data lives only in project files - the plugin owns no data, so uninstalling or crashing it loses nothing.

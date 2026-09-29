@@ -7,6 +7,15 @@
 export interface SessionOverride {
   enabled?: boolean
   compressEnabled?: boolean
+  workflowEnabled?: boolean
+}
+
+/** The workflow sub-switches (agent-workflow surface). */
+export interface WorkflowConfigView {
+  enabled: boolean
+  autoScaffold: boolean
+  turnCheck: boolean
+  boardInject: boolean
 }
 
 /** The config view the GUI renders. */
@@ -18,13 +27,18 @@ export interface MemoryConfigView {
   autoCompress: boolean
   compressInterval: number
   sessions: Record<string, SessionOverride>
+  /** Present since the agent-workflow surface shipped; absent on very old hosts. */
+  workflow?: WorkflowConfigView
 }
 
 /** Global switches a PUT may patch. */
 export type GlobalConfigPatch = Partial<Pick<
   MemoryConfigView,
   'enabled' | 'autoInit' | 'autoMaintain' | 'announceToAgent' | 'autoCompress' | 'compressInterval'
->>
+>> & {
+  /** Nested workflow sub-switch patch. */
+  workflow?: Partial<WorkflowConfigView>
+}
 
 const API_PREFIX = '/api/dsh-project-memory'
 
