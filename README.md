@@ -87,3 +87,24 @@ pnpm run build        # tsc emits lib/types, tsdown emits lib/index.js + lib/cli
   human-readable memory.
 - Uninstall: `"$NODE" "$BIN" plugin --profile web remove @lisylva-lee/dsh-project-memory`
   (or disable/remove it from the plugin manager UI).
+## Agent workflow (agent-workflow sub-surface, since 0.3)
+
+Besides memory, the plugin ships an execution-discipline layer (independently switchable):
+
+- at session start it injects the AGENT_WORKFLOW.md policy plus a compact summary of unfinished STATUS.md rows;
+- it scaffolds, idempotently, AGENT_WORKFLOW.md (policy), STATUS.md (board) and _work/ (per-task scratch space with new-task.sh, log.sh, sanitize-env.sh and checks/);
+- at turn end it runs cheap checks (unfinished task without evidence / blocked row without a reason / stray temp files in the project root) and nudges only when something is missing;
+- it registers an agent-workflow runtime skill through ctx.skills.register.
+
+Switches live in the workflow section of ~/.dsh/dsh-project-memory.json (also writable through PUT /api/dsh-project-memory/config):
+
+| Switch | Default | Effect |
+| --- | --- | --- |
+| workflow.enabled | true | master switch (skill/guidance/scaffold/checks) |
+| workflow.autoScaffold | true | idempotent scaffold at session start |
+| workflow.turnCheck | true | turn-end checks, only nudges when something is missing |
+| workflow.boardInject | true | inject the board summary into the system prompt |
+
+Without the plugin the templates can be installed standalone: bash assets/workflow/install-workflow.sh <target> [--force].
+The four GUI switches (a Workflow group in the settings card) are the next step; for now edit the config file or call the PUT route.
+Workflow data lives only in project files - the plugin owns no data, so uninstalling or crashing it loses nothing.

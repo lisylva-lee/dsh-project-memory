@@ -76,3 +76,24 @@ pnpm run build        # tsc 出 lib/types，tsdown 出 lib/index.js 与 lib/clie
 - 与 `dsh-memoir`（机器记忆）并行不冲突：本插件写人读版记忆。
 - 卸载：`"$NODE" "$BIN" plugin --profile web remove @lisylva-lee/dsh-project-memory`
   （或在插件管理界面里关掉/移除）。
+## Agent workflow（agent-workflow 子模块，0.3 起）
+
+除记忆之外，插件还带一层执行纪律（可单独关掉）：
+
+- 会话开始时把 AGENT_WORKFLOW.md 的规范与 STATUS.md 看板的未完成项摘要注入系统提示；
+- 幂等铺开项目内三件套：AGENT_WORKFLOW.md（策略）、STATUS.md（看板）、_work/（每任务隔离目录 + new-task.sh / log.sh / sanitize-env.sh + checks/）；
+- 每轮结束跑一次廉价自检（未完成任务缺证据 / 阻塞未写原因 / 项目根散落临时文件），仅在发现缺项时提醒一次；
+- 通过 ctx.skills.register 注册 agent-workflow 运行时技能。
+
+开关（配置文件 ~/.dsh/dsh-project-memory.json 的 workflow 小节，也可由 PUT /api/dsh-project-memory/config 写入）：
+
+| 开关 | 默认 | 作用 |
+| --- | --- | --- |
+| workflow.enabled | true | 工作流总闸（技能/指引/铺开/自检） |
+| workflow.autoScaffold | true | 会话开始幂等铺开三件套 |
+| workflow.turnCheck | true | 每轮结束自检，仅在发现缺项时提醒 |
+| workflow.boardInject | true | 把看板未完成项注入系统提示 |
+
+不需要插件时也可单独安装这套模板：bash assets/workflow/install-workflow.sh <目标项目> [--force]。
+GUI 卡片上的四个开关（Workflow 小节）为下一步；当前可直接编辑配置文件或调用上述 PUT 接口。
+数据只放项目内文件：插件不拥有工作流数据，卸载或崩溃都不影响可读性与可移植性。

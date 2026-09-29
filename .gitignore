@@ -9,3 +9,10 @@ memory/
 !assets/templates/MEMORY.md
 !assets/templates/memory/
 !assets/templates/memory/_TEMPLATE.md
+
+# keep the bundled agent-workflow assets tracked (its run.log would match *.log)
+!assets/workflow/
+!assets/workflow/SKILL.md
+!assets/workflow/templates/
+!assets/workflow/templates/**
+!assets/workflow/templates/_work/_template/run.log

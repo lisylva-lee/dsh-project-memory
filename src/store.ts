@@ -6,7 +6,14 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { CONFIG_FILE_NAME, DEFAULT_CONFIG, type MemoryConfig, type SessionOverride } from './core/contract.ts'
+import {
+  CONFIG_FILE_NAME,
+  DEFAULT_CONFIG,
+  DEFAULT_WORKFLOW,
+  type MemoryConfig,
+  type SessionOverride,
+  type WorkflowConfig,
+} from './core/contract.ts'
 
 /** Resolve the config file path under the dsh home. */
 export function configPath(home: string = homedir()): string {
@@ -23,6 +30,18 @@ function toBool(value: unknown, fallback: boolean): boolean {
 
 function toInterval(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 ? value : fallback
+}
+
+/** Normalize the nested workflow sub-switches (missing = defaults). */
+export function toWorkflow(raw: unknown): WorkflowConfig {
+  const base = DEFAULT_WORKFLOW
+  if (!isRecord(raw)) return { ...base }
+  return {
+    enabled: toBool(raw.enabled, base.enabled),
+    autoScaffold: toBool(raw.autoScaffold, base.autoScaffold),
+    turnCheck: toBool(raw.turnCheck, base.turnCheck),
+    boardInject: toBool(raw.boardInject, base.boardInject),
+  }
 }
 
 function toCounts(raw: unknown): Record<string, number> {
@@ -48,7 +67,14 @@ export function normalizeConfig(raw: unknown): MemoryConfig {
       const override: SessionOverride = {}
       if (typeof entry.enabled === 'boolean') override.enabled = entry.enabled
       if (typeof entry.compressEnabled === 'boolean') override.compressEnabled = entry.compressEnabled
-      if (override.enabled !== undefined || override.compressEnabled !== undefined) sessions[id] = override
+      if (typeof entry.workflowEnabled === 'boolean') override.workflowEnabled = entry.workflowEnabled
+      if (
+        override.enabled !== undefined ||
+        override.compressEnabled !== undefined ||
+        override.workflowEnabled !== undefined
+      ) {
+        sessions[id] = override
+      }
     }
   }
   return {
@@ -60,6 +86,7 @@ export function normalizeConfig(raw: unknown): MemoryConfig {
     compressInterval: toInterval(raw.compressInterval, base.compressInterval),
     sessions,
     counts: toCounts(raw.counts),
+    workflow: toWorkflow(raw.workflow),
   }
 }
 
@@ -71,6 +98,22 @@ export interface GlobalPatch {
   announceToAgent?: boolean
   autoCompress?: boolean
   compressInterval?: number
+  /** Patch of the nested workflow sub-switches (omitted fields keep their value). */
+  workflow?: Partial<WorkflowConfig>
+}
+
+/** Fields of the workflow sub-switch patch. */
+const WORKFLOW_KEYS: ReadonlyArray<keyof WorkflowConfig> = ['enabled', 'autoScaffold', 'turnCheck', 'boardInject']
+
+/** Merge a partial workflow patch over the current value, dropping invalid entries. */
+function mergeWorkflow(current: WorkflowConfig, patch: unknown): WorkflowConfig {
+  if (!isRecord(patch)) return current
+  const next: WorkflowConfig = { ...current }
+  for (const key of WORKFLOW_KEYS) {
+    const value = patch[key]
+    if (typeof value === 'boolean') next[key] = value
+  }
+  return next
 }
 
 /** Atomic file store for the plugin config. */
@@ -113,6 +156,7 @@ export class MemoryStore {
       ...(patch.announceToAgent !== undefined ? { announceToAgent: patch.announceToAgent } : {}),
       ...(patch.autoCompress !== undefined ? { autoCompress: patch.autoCompress } : {}),
       ...(patch.compressInterval !== undefined ? { compressInterval: patch.compressInterval } : {}),
+      ...(patch.workflow !== undefined ? { workflow: mergeWorkflow(current.workflow, patch.workflow) } : {}),
     })
     this.save(next)
     return next
@@ -149,6 +193,30 @@ export class MemoryStore {
       entry.compressEnabled = compressEnabled
     }
     if (entry.enabled === undefined && entry.compressEnabled === undefined) {
+      delete sessions[sessionId]
+    } else {
+      sessions[sessionId] = entry
+    }
+    const next = normalizeConfig({ ...current, sessions })
+    this.save(next)
+    return next
+  }
+
+  /** Set (boolean) or clear (null) one session workflow override, then persist. */
+  setSessionWorkflow(sessionId: string, workflowEnabled: boolean | null): MemoryConfig {
+    const current = this.load() ?? DEFAULT_CONFIG
+    const sessions = { ...current.sessions }
+    const entry = { ...sessions[sessionId] }
+    if (workflowEnabled === null) {
+      delete entry.workflowEnabled
+    } else {
+      entry.workflowEnabled = workflowEnabled
+    }
+    if (
+      entry.enabled === undefined &&
+      entry.compressEnabled === undefined &&
+      entry.workflowEnabled === undefined
+    ) {
       delete sessions[sessionId]
     } else {
       sessions[sessionId] = entry

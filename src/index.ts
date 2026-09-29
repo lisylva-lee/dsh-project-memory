@@ -24,7 +24,27 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-skill'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import { GUIDANCE, MAINTAIN_PROMPT, SKILL_DESCRIPTION, SKILL_WHEN_TO_USE } from './core/guidance.ts'
-import { MEMORY_OFF_GUIDANCE } from './core/contract.ts'
+import {
+  DEFAULT_WORKFLOW,
+  MEMORY_OFF_GUIDANCE,
+  WORKFLOW_OFF_GUIDANCE,
+  type WorkflowConfig,
+} from './core/contract.ts'
+import {
+  checkWorkflow,
+  ensureWorkflowInit,
+  loadWorkflowSkillContent,
+  readBoardSummary,
+  resolveWorkflowSkillDir,
+  resolveWorkflowTemplateDir,
+  WORKFLOW_SKILL_NAME,
+} from './core/workflow.ts'
+import {
+  WORKFLOW_CHECK_PROMPT_PREFIX,
+  WORKFLOW_GUIDANCE,
+  WORKFLOW_SKILL_DESCRIPTION,
+  WORKFLOW_SKILL_WHEN_TO_USE,
+} from './core/workflow-guidance.ts'
 import { ensureMemoryInit, loadSkillContent, resolveSkillDir, resolveTemplateDir } from './core/templates.ts'
 import { runCompression } from './core/compress.ts'
 import { makeRoutes } from './routes.ts'
@@ -47,9 +67,11 @@ interface CompositionDefaults {
   announceToAgent: boolean
   autoCompress: boolean
   compressInterval: number
+  workflow: WorkflowConfig
 }
 
 function resolveDefaults(config: Record<string, unknown> | undefined): CompositionDefaults {
+  const rawWorkflow = (config as { workflow?: Record<string, unknown> } | undefined)?.workflow
   return {
     enabled: typeof config?.enabled === 'boolean' ? config.enabled : true,
     autoInit: typeof config?.autoInit === 'boolean' ? config.autoInit : true,
@@ -59,6 +81,12 @@ function resolveDefaults(config: Record<string, unknown> | undefined): Compositi
     compressInterval: typeof config?.compressInterval === 'number' && Number.isInteger(config.compressInterval) && config.compressInterval >= 1
       ? config.compressInterval
       : 5,
+    workflow: {
+      enabled: typeof rawWorkflow?.enabled === 'boolean' ? rawWorkflow.enabled : DEFAULT_WORKFLOW.enabled,
+      autoScaffold: typeof rawWorkflow?.autoScaffold === 'boolean' ? rawWorkflow.autoScaffold : DEFAULT_WORKFLOW.autoScaffold,
+      turnCheck: typeof rawWorkflow?.turnCheck === 'boolean' ? rawWorkflow.turnCheck : DEFAULT_WORKFLOW.turnCheck,
+      boardInject: typeof rawWorkflow?.boardInject === 'boolean' ? rawWorkflow.boardInject : DEFAULT_WORKFLOW.boardInject,
+    },
   }
 }
 
@@ -99,6 +127,7 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       compressInterval: file?.compressInterval ?? defaults.compressInterval,
       sessions: file?.sessions ?? {},
       counts: file?.counts ?? {},
+      workflow: file?.workflow ?? defaults.workflow,
     }
   }
 
@@ -124,12 +153,27 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
     return value.sessions[sessionId]?.compressEnabled ?? true
   }
 
+  /**
+   * Effective per-session workflow automation: the workflow master switch is a
+   * hard gate; the per-session override (default on) refines it per session.
+   */
+  const sessionWorkflowActive = (sessionId: string | undefined): boolean => {
+    const value = resolve()
+    if (!value.enabled || !value.workflow.enabled) return false
+    if (sessionId === undefined) return true
+    return value.sessions[sessionId]?.workflowEnabled ?? true
+  }
+
   let disposeSkill: (() => void) | undefined
   let disposeSection: (() => void) | undefined
+  let disposeWorkflowSkill: (() => void) | undefined
+  let disposeWorkflowSection: (() => void) | undefined
 
   const sync = (): void => {
     if (disposeSkill !== undefined) { disposeSkill(); disposeSkill = undefined }
     if (disposeSection !== undefined) { disposeSection(); disposeSection = undefined }
+    if (disposeWorkflowSkill !== undefined) { disposeWorkflowSkill(); disposeWorkflowSkill = undefined }
+    if (disposeWorkflowSection !== undefined) { disposeWorkflowSection(); disposeWorkflowSection = undefined }
     const value = resolve()
     if (!value.enabled) return
 
@@ -154,6 +198,34 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       content: loadSkillContent(),
       resourceBase: { kind: 'directory', path: resolveSkillDir() },
       source: 'plugin:dsh-project-memory',
+    })
+
+    if (!value.workflow.enabled) return
+
+    if (value.workflow.boardInject) {
+      disposeWorkflowSection = ctx.systemPrompt.section({
+        name: 'plugin:dsh-agent-workflow',
+        order: SECTION_ORDER + 1,
+        text: (context: AssembleContext) => {
+          const live = resolve()
+          if (!live.enabled || !live.workflow.enabled) return ''
+          const header = context.agent?.session?.header as { id?: string; cwd?: string } | undefined
+          const id = header?.id
+          if (id !== undefined && live.sessions[id]?.workflowEnabled === false) return WORKFLOW_OFF_GUIDANCE
+          const cwd = header?.cwd
+          const board = typeof cwd === 'string' && cwd !== '' ? readBoardSummary(cwd) : undefined
+          return board === undefined ? WORKFLOW_GUIDANCE : WORKFLOW_GUIDANCE + '\n当前看板（未完成项）：\n' + board
+        },
+      })
+    }
+
+    disposeWorkflowSkill = ctx.skills.register({
+      name: WORKFLOW_SKILL_NAME,
+      description: WORKFLOW_SKILL_DESCRIPTION,
+      whenToUse: WORKFLOW_SKILL_WHEN_TO_USE,
+      content: loadWorkflowSkillContent(),
+      resourceBase: { kind: 'directory', path: resolveWorkflowSkillDir() },
+      source: 'plugin:dsh-agent-workflow',
     })
   }
 
@@ -185,6 +257,16 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
         const created = ensureMemoryInit(cwd, resolveTemplateDir())
         if (created.length > 0) {
           ctx.logger?.info?.('dsh-project-memory: initialized memory in ' + cwd + ': ' + created.join(', '))
+        }
+      }
+
+      // Auto-scaffold the agent workflow (policy + board + _work/), idempotent.
+      if (value.workflow.enabled && value.workflow.autoScaffold && sessionWorkflowActive(sessionId)) {
+        const scaffolded = ensureWorkflowInit(cwd, resolveWorkflowTemplateDir())
+        if (scaffolded.length > 0) {
+          ctx.logger?.info?.(
+            'dsh-agent-workflow: scaffolded workflow in ' + cwd + ': ' + scaffolded.length + ' files',
+          )
         }
       }
 
@@ -240,11 +322,56 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
     }
   })
 
+  // Workflow self-check steer: only fires when the checks find a missing item,
+  // in its own listener + try/catch so a workflow failure can never affect the
+  // memory half.
+  const workflowGate = new Map<string, Set<number>>()
+  ctx.on('agent/turn-stopping', (payload) => {
+    try {
+      const value = resolve()
+      if (!value.enabled || !value.workflow.enabled || !value.workflow.turnCheck) return
+      const agent = payload?.agent
+      if (!agent || isSubagentSession(agent)) return
+      if (payload.signal?.aborted) return
+      const events = agent.session?.snapshotEvents() ?? []
+      const turn = payload.turn ?? -1
+      if (!turnActivity(events, turn).worked) return
+      const sessionId = agent.session?.header?.id
+      if (!sessionWorkflowActive(sessionId)) return
+      const cwd = agent.session?.header?.cwd
+      if (typeof cwd !== 'string' || cwd === '') return
+      const findings = checkWorkflow(cwd)
+      if (findings.length === 0) return
+      const agentId = agent.id ?? sessionId ?? 'unknown'
+      let steered = workflowGate.get(agentId)
+      if (steered === undefined) {
+        steered = new Set<number>()
+        workflowGate.set(agentId, steered)
+      }
+      if (steered.has(turn)) return
+      steered.add(turn)
+      for (const t of [...steered]) if (t < turn - 100) steered.delete(t)
+      const text =
+        WORKFLOW_CHECK_PROMPT_PREFIX + '\n' +
+        findings.map(finding => '- ' + finding.detail).join('\n') + '\n' +
+        '若已处理请忽略；未处理请补齐（证据进 _work/<任务>/evidence/、更新 STATUS.md、临时文件归位），' +
+        '然后回复一句话说明处理结果。'
+      agent.steer?.(createUserMessage({
+        content: [{ type: 'text', text }],
+        source: { kind: 'plugin', plugin: 'dsh-agent-workflow' },
+      }))
+    } catch (error) {
+      ctx.logger?.warn?.('dsh-agent-workflow: workflow check steer failed: ' + String(error))
+    }
+  })
+
   // Initial registration from the composition entry.
   sync()
 
   ctx.effect(() => () => {
     if (disposeSkill !== undefined) disposeSkill()
     if (disposeSection !== undefined) disposeSection()
+    if (disposeWorkflowSkill !== undefined) disposeWorkflowSkill()
+    if (disposeWorkflowSection !== undefined) disposeWorkflowSection()
   }, 'dsh-project-memory: teardown')
 }

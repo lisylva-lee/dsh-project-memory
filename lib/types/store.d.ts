@@ -1,6 +1,8 @@
-import { type MemoryConfig } from './core/contract.ts';
+import { type MemoryConfig, type WorkflowConfig } from './core/contract.ts';
 /** Resolve the config file path under the dsh home. */
 export declare function configPath(home?: string): string;
+/** Normalize the nested workflow sub-switches (missing = defaults). */
+export declare function toWorkflow(raw: unknown): WorkflowConfig;
 /** Validate/normalize an untrusted config document (file or request body). */
 export declare function normalizeConfig(raw: unknown): MemoryConfig;
 /** Global switches a config PUT may patch. */
@@ -11,6 +13,8 @@ export interface GlobalPatch {
     announceToAgent?: boolean;
     autoCompress?: boolean;
     compressInterval?: number;
+    /** Patch of the nested workflow sub-switches (omitted fields keep their value). */
+    workflow?: Partial<WorkflowConfig>;
 }
 /** Atomic file store for the plugin config. */
 export declare class MemoryStore {
@@ -29,6 +33,8 @@ export declare class MemoryStore {
     setSession(sessionId: string, enabled: boolean | null): MemoryConfig;
     /** Set (boolean) or clear (null) one session compression override, then persist. */
     setSessionCompress(sessionId: string, compressEnabled: boolean | null): MemoryConfig;
+    /** Set (boolean) or clear (null) one session workflow override, then persist. */
+    setSessionWorkflow(sessionId: string, workflowEnabled: boolean | null): MemoryConfig;
     /** Set one per-project session counter (0 removes the key), then persist. */
     setCount(cwd: string, count: number): MemoryConfig;
 }

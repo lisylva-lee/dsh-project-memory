@@ -89,12 +89,27 @@ export function makeRoutes(store: MemoryStore, onChange: () => void): WebRoute[]
             announceToAgent?: boolean
             autoCompress?: boolean
             compressInterval?: number
+            workflow?: {
+              enabled?: boolean
+              autoScaffold?: boolean
+              turnCheck?: boolean
+              boardInject?: boolean
+            }
           } = {}
           for (const key of ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent', 'autoCompress'] as const) {
             if (typeof patch[key] === 'boolean') clean[key] = patch[key] as boolean
           }
           if (typeof patch.compressInterval === 'number' && Number.isInteger(patch.compressInterval) && patch.compressInterval >= 1) {
             clean.compressInterval = patch.compressInterval
+          }
+          // Nested workflow sub-switch patch (absent/invalid keys are dropped).
+          if (typeof patch.workflow === 'object' && patch.workflow !== null && !Array.isArray(patch.workflow)) {
+            const raw = patch.workflow as Record<string, unknown>
+            const workflow: NonNullable<typeof clean.workflow> = {}
+            for (const key of ['enabled', 'autoScaffold', 'turnCheck', 'boardInject'] as const) {
+              if (typeof raw[key] === 'boolean') workflow[key] = raw[key] as boolean
+            }
+            if (Object.keys(workflow).length > 0) clean.workflow = workflow
           }
           const next = store.updateGlobal(clean)
           onChange()

@@ -9,6 +9,19 @@ export interface SessionOverride {
     enabled?: boolean;
     /** Per-session compression switch; absent = follow the global autoCompress. */
     compressEnabled?: boolean;
+    /** Per-session workflow automation switch; absent = follow workflow.enabled. */
+    workflowEnabled?: boolean;
+}
+/** Workflow-automation sub-switches (agent workflow: policy file + board + checks). */
+export interface WorkflowConfig {
+    /** Master switch for the agent-workflow surface (skill, guidance, scaffold, checks). */
+    enabled: boolean;
+    /** Scaffold AGENT_WORKFLOW.md + STATUS.md + _work/ at session start (idempotent). */
+    autoScaffold: boolean;
+    /** Nudge once per turn when the workflow checks find something missing. */
+    turnCheck: boolean;
+    /** Inject the STATUS.md board summary into the system prompt. */
+    boardInject: boolean;
 }
 /** The effective plugin configuration (global switches + per-session overrides). */
 export interface MemoryConfig {
@@ -28,12 +41,18 @@ export interface MemoryConfig {
     sessions: Record<string, SessionOverride>;
     /** Per-project session counters keyed by cwd (internal, persisted). */
     counts: Record<string, number>;
+    /** Agent-workflow sub-switches (nested so old configs stay valid). */
+    workflow: WorkflowConfig;
 }
 /** Defaults applied when a config document (file or request) omits a field. */
 export declare const DEFAULT_CONFIG: MemoryConfig;
+/** Defaults for the workflow sub-switches (used by the normalizer). */
+export declare const DEFAULT_WORKFLOW: WorkflowConfig;
 /** Config file name under ~/.dsh/. */
 export declare const CONFIG_FILE_NAME = "dsh-project-memory.json";
 /** HTTP prefix of the config route family. */
 export declare const API_PREFIX = "/api/dsh-project-memory";
+/** The session-scope "off" note when the per-session switch disables the workflow. */
+export declare const WORKFLOW_OFF_GUIDANCE = "\uFF08dsh-agent-workflow\uFF09\u672C\u4F1A\u8BDD\u7684\u5DE5\u4F5C\u6D41\u5F00\u5173\u5DF2\u5173\u95ED\uFF1A\u4E0D\u81EA\u52A8\u94FA AGENT_WORKFLOW.md / STATUS.md / _work/\uFF0C\u4E5F\u4E0D\u505A\u6BCF\u8F6E\u81EA\u68C0\uFF1B\u4EC5\u5728\u7528\u6237\u660E\u786E\u8981\u6C42\u65F6\u624D\u4F7F\u7528\u5DE5\u4F5C\u6D41\u89C4\u8303\u3002";
 /** The session-scope "off" note when the per-session switch disables memory. */
 export declare const MEMORY_OFF_GUIDANCE = "\uFF08dsh-project-memory\uFF09\u672C\u4F1A\u8BDD\u7684\u9879\u76EE\u8BB0\u5FC6\u5F00\u5173\u5DF2\u5173\u95ED\uFF1A\u4E0D\u81EA\u52A8\u521D\u59CB\u5316/\u7EF4\u62A4 MEMORY.md \u4E0E memory/\uFF0C\u4EC5\u5728\u7528\u6237\u660E\u786E\u8981\u6C42\u65F6\u624D\u4F7F\u7528\u8BB0\u5FC6\u6A21\u677F\u3002";

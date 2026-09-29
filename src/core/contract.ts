@@ -10,6 +10,20 @@ export interface SessionOverride {
   enabled?: boolean
   /** Per-session compression switch; absent = follow the global autoCompress. */
   compressEnabled?: boolean
+  /** Per-session workflow automation switch; absent = follow workflow.enabled. */
+  workflowEnabled?: boolean
+}
+
+/** Workflow-automation sub-switches (agent workflow: policy file + board + checks). */
+export interface WorkflowConfig {
+  /** Master switch for the agent-workflow surface (skill, guidance, scaffold, checks). */
+  enabled: boolean
+  /** Scaffold AGENT_WORKFLOW.md + STATUS.md + _work/ at session start (idempotent). */
+  autoScaffold: boolean
+  /** Nudge once per turn when the workflow checks find something missing. */
+  turnCheck: boolean
+  /** Inject the STATUS.md board summary into the system prompt. */
+  boardInject: boolean
 }
 
 /** The effective plugin configuration (global switches + per-session overrides). */
@@ -30,6 +44,8 @@ export interface MemoryConfig {
   sessions: Record<string, SessionOverride>
   /** Per-project session counters keyed by cwd (internal, persisted). */
   counts: Record<string, number>
+  /** Agent-workflow sub-switches (nested so old configs stay valid). */
+  workflow: WorkflowConfig
 }
 
 /** Defaults applied when a config document (file or request) omits a field. */
@@ -42,6 +58,20 @@ export const DEFAULT_CONFIG: MemoryConfig = {
   compressInterval: 5,
   sessions: {},
   counts: {},
+  workflow: {
+    enabled: true,
+    autoScaffold: true,
+    turnCheck: true,
+    boardInject: true,
+  },
+}
+
+/** Defaults for the workflow sub-switches (used by the normalizer). */
+export const DEFAULT_WORKFLOW: WorkflowConfig = {
+  enabled: true,
+  autoScaffold: true,
+  turnCheck: true,
+  boardInject: true,
 }
 
 /** Config file name under ~/.dsh/. */
@@ -49,6 +79,10 @@ export const CONFIG_FILE_NAME = 'dsh-project-memory.json'
 
 /** HTTP prefix of the config route family. */
 export const API_PREFIX = '/api/dsh-project-memory'
+
+/** The session-scope "off" note when the per-session switch disables the workflow. */
+export const WORKFLOW_OFF_GUIDANCE =
+  '（dsh-agent-workflow）本会话的工作流开关已关闭：不自动铺 AGENT_WORKFLOW.md / STATUS.md / _work/，也不做每轮自检；仅在用户明确要求时才使用工作流规范。'
 
 /** The session-scope "off" note when the per-session switch disables memory. */
 export const MEMORY_OFF_GUIDANCE =
