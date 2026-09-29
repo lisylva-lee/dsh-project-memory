@@ -91,6 +91,79 @@ node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:li
 - If the CLI reports `dsh` is not on `PATH`, invoke it via the bundled node:
   `node node_modules/@deepseek-ai/dsh/lib/bin.js ...` as shown above.
 
+## Deployment
+
+### Prerequisites
+
+| Requirement | Why / notes |
+| --- | --- |
+| DSH with a `web` profile on the **0.1.5-rc.1** cohort | The plugin targets that cohort: `dsh.bundle.patch` mount, the `dsh.client` browser half, and `ctx.skills` / `ctx.systemPrompt` / `ctx.on(agent/session-start)` / `ctx.on(agent/turn-stopping)`. |
+| `git` and `pnpm` on PATH | `dsh plugin ... add github:...` clones the repository and installs it with pnpm. |
+| Loopback access to the harness web server | The config card reads and writes `/api/dsh-project-memory/*` (loopback-only routes). |
+| Bash (Git Bash, zsh, …) | Only needed for the standalone workflow installer `assets/workflow/install-workflow.sh`. |
+| No credentials | The repository is public. Only a private fork needs `gh auth login` or an SSH key. |
+
+> **Upgrading from the old name?** `@linxin666/dsh-project-memory` (<= 0.1.2) and this package (`@lisylva-lee/dsh-project-memory`, >= 0.2.0) are different package names. Remove the old one first, otherwise two memory plugins are mounted at once.
+
+### Install (recommended: straight from GitHub)
+
+```sh
+dsh plugin --profile web add github:lisylva-lee/dsh-project-memory
+```
+
+`lib/` is committed, so installation runs **no build step** (no `prepare` script, no pnpm `allowBuilds` dance). Restart the desktop app (or reload the web profile) so the new plugin row is mounted.
+
+### Install (development: local checkout)
+
+```sh
+git clone https://github.com/lisylva-lee/dsh-project-memory.git
+cd dsh-project-memory
+npm install && npm run build      # or: pnpm install && pnpm run build
+dsh plugin --profile web add link:$PWD
+```
+
+### Workflow templates only (no plugin)
+
+```sh
+bash assets/workflow/install-workflow.sh <target-project> [--force]
+```
+
+Copies `AGENT_WORKFLOW.md`, `STATUS.md` and `_work/` (helper scripts + three check scripts) into the target project. The plugin does exactly the same thing automatically at session start.
+
+### Verify the deployment
+
+1. Installed files exist:
+   `~/.dsh/profiles/web/node_modules/@lisylva-lee/dsh-project-memory/{package.json,cordis.patch.yml,lib/index.js,lib/client.js,assets/workflow/SKILL.md}`
+2. Settings -> Plugin configuration -> Web UI plugins shows the project-memory card including the `workflow` group (master / auto-scaffold / turn-end checks / board injection).
+3. Open any project session: the project root gains `AGENT_WORKFLOW.md`, `STATUS.md` and `_work/` (idempotent, never overwrites), and the system prompt carries the board summary.
+4. Run the checks by hand: `bash _work/checks/check-evidence.sh`, `bash _work/checks/check-status.sh`, `bash _work/checks/check-tempfiles.sh`.
+
+### Upgrade and uninstall
+
+```sh
+dsh plugin --profile web add github:lisylva-lee/dsh-project-memory   # re-add = upgrade
+dsh plugin --profile web remove @lisylva-lee/dsh-project-memory      # uninstall
+```
+
+Uninstalling removes the automation only: every workflow file it created stays in the projects (plain markdown, git-friendly).
+
+### Configuration
+
+- GUI: Settings -> Plugin configuration -> the project-memory card (five memory switches plus the four `workflow` switches).
+- File: `~/.dsh/dsh-project-memory.json` (0600), for example `{"workflow":{"autoScaffold":false}}`.
+- HTTP: `PUT /api/dsh-project-memory/config` (loopback-only) with a body such as `{"workflow":{"turnCheck":false}}`.
+- Home resolution: `$DSH_HOME` overrides `~/.dsh` for the config file, the user skill directories and the templates.
+
+### Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| No card in Settings | The plugin row is mounted per profile; restart the app and confirm `~/.dsh/profiles/web/package.json` lists `@lisylva-lee/dsh-project-memory`. |
+| Duplicated memory prompts | An old `@linxin666/dsh-project-memory` is still installed - remove it. |
+| No `_work/` created in a project | `workflow.enabled` or `workflow.autoScaffold` is off (globally or for this session). |
+| `assets/workflow` missing after install | The package publishes `lib` + `assets` (see `files` in `package.json`); reinstall from GitHub. |
+| Turn-end nudges never appear | Intended: the check only fires when something is actually missing (unfinished task without evidence, blocked row without a reason, stray temp files in the project root). |
+
 ## Development
 
 `lib/` is committed; the standalone repo consumes the prebuilt artifacts.

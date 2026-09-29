@@ -75,6 +75,79 @@ node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:li
   下载）。这是随包种子目录的固有限制，与本插件无关。
 - 若报 `dsh` 不在 PATH，就按上面的方式用内置 node 直接执行 bin.js。
 
+## 部署
+
+### 部署条件
+
+| 条件 | 说明 |
+| --- | --- |
+| 带 `web` profile 的 DSH，且属于 **0.1.5-rc.1** 这一代 | 插件依赖该代的能力：`dsh.bundle.patch` 挂载、`dsh.client` 浏览器半边，以及 `ctx.skills` / `ctx.systemPrompt` / `ctx.on(agent/session-start)` / `ctx.on(agent/turn-stopping)`。 |
+| PATH 里有 `git` 与 `pnpm` | `dsh plugin ... add github:...` 会克隆仓库并用 pnpm 安装。 |
+| 能访问本机回环地址上的 harness web 服务 | 配置卡片通过 `/api/dsh-project-memory/*`（仅回环）读写。 |
+| Bash（Git Bash / zsh 等） | 仅"只装工作流模板"这条路需要：`assets/workflow/install-workflow.sh`。 |
+| 无需任何凭据 | 仓库是 public；只有私有 fork 才需要 `gh auth login` 或 SSH key。 |
+
+> **从旧包名升级？** `@linxin666/dsh-project-memory`（<= 0.1.2）与本包（`@lisylva-lee/dsh-project-memory`，>= 0.2.0）**是不同的包名**。请先移除旧包，否则会同时挂载两个记忆插件。
+
+### 安装（推荐：直接从 GitHub 装）
+
+```sh
+dsh plugin --profile web add github:lisylva-lee/dsh-project-memory
+```
+
+`lib/` 已随仓库提交，安装时**不跑构建**（没有 `prepare` 脚本，也不需要处理 pnpm `allowBuilds`）。装完重启桌面应用（或重载 web profile），新的插件行才会挂载。
+
+### 安装（开发调试：本地 checkout）
+
+```sh
+git clone https://github.com/lisylva-lee/dsh-project-memory.git
+cd dsh-project-memory
+npm install && npm run build      # 或：pnpm install && pnpm run build
+dsh plugin --profile web add link:$PWD
+```
+
+### 只装工作流模板（不装插件）
+
+```sh
+bash assets/workflow/install-workflow.sh <目标项目> [--force]
+```
+
+把 `AGENT_WORKFLOW.md`、`STATUS.md` 与 `_work/`（三个辅助脚本 + 三个自检脚本）复制到目标项目；装了插件时，插件会在会话开始自动做同样的事。
+
+### 验证部署是否成功
+
+1. 安装产物存在：
+   `~/.dsh/profiles/web/node_modules/@lisylva-lee/dsh-project-memory/{package.json,cordis.patch.yml,lib/index.js,lib/client.js,assets/workflow/SKILL.md}`
+2. 设置 -> 插件配置 -> Web UI 插件里能看到 project-memory 卡片，并含 `workflow` 小节（总闸 / 自动铺开 / 每轮自检 / 看板注入）。
+3. 打开任意项目的会话：项目根会幂等生成 `AGENT_WORKFLOW.md`、`STATUS.md` 与 `_work/`（已存在不覆盖），系统提示里也会带上看板未完成项摘要。
+4. 手动跑一次自检：`bash _work/checks/check-evidence.sh`、`bash _work/checks/check-status.sh`、`bash _work/checks/check-tempfiles.sh`。
+
+### 升级与卸载
+
+```sh
+dsh plugin --profile web add github:lisylva-lee/dsh-project-memory   # 重新 add 即升级
+dsh plugin --profile web remove @lisylva-lee/dsh-project-memory      # 卸载
+```
+
+卸载只移除自动化：它生成的工作流文件都留在项目里（纯 markdown，可 git 管理）。
+
+### 配置
+
+- GUI：设置 -> 插件配置 -> project-memory 卡片（五个记忆开关 + 四个 `workflow` 开关）。
+- 文件：`~/.dsh/dsh-project-memory.json`（0600），例如 `{"workflow":{"autoScaffold":false}}`。
+- HTTP：`PUT /api/dsh-project-memory/config`（仅回环），请求体如 `{"workflow":{"turnCheck":false}}`。
+- 主目录解析：`$DSH_HOME` 会覆盖 `~/.dsh`（作用于配置文件、用户技能目录与模板）。
+
+### 排错
+
+| 现象 | 排查 |
+| --- | --- |
+| 设置里没有卡片 | 插件行是按 profile 挂载的；重启应用，并确认 `~/.dsh/profiles/web/package.json` 里列出了 `@lisylva-lee/dsh-project-memory`。 |
+| 出现两份记忆提示 | 旧包 `@linxin666/dsh-project-memory` 还在，移除它。 |
+| 项目里没生成 `_work/` | `workflow.enabled` 或 `workflow.autoScaffold` 被关了（全局或本会话）。 |
+| 装完缺 `assets/workflow` | 包发布 `lib` + `assets`（见 `package.json` 的 `files`）；从 GitHub 重新安装。 |
+| 收尾提醒从不出现 | 这是预期行为：自检只在真的缺项时才提醒（未完成任务无证据 / 阻塞行未写原因 / 项目根散落临时文件）。 |
+
 ## 开发
 
 `lib/` 已提交，独立克隆直接使用预构建产物。重新构建需要作者的 dsh-web
