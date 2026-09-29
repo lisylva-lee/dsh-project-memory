@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.1 - 2026-09-29
+
+### Fixed
+
+- **Startup crash in v0.2.0**: the bundled `lib/index.js` resolved the workflow assets relative to the bundle instead of the package root (it looked for `<repo>/../assets/workflow/SKILL.md`) and the ENOENT surfaced while the plugin was mounting, so the cordis loader aborted and the desktop app refused to boot. Asset lookup now probes both layouts (`../assets/workflow/` for the bundle, `../../assets/workflow/` for `src/`) and picks the one that really contains `SKILL.md`.
+- Mount-time failures no longer escape `apply()`: prompt-section and runtime-skill registration now run inside a try/catch that logs a warning and keeps the plugin tree alive, so a bad asset path can never stop the host from starting again.
+
+### Notes
+
+- **v0.2.0 is broken - use v0.2.1** (or the default branch, which is what a GitHub install follows).
+
 ## v0.2.0 - 2026-09-29
 
 agent-workflow sub-surface, GUI switches and DSH_HOME semantics.

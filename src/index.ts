@@ -177,6 +177,18 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
     const value = resolve()
     if (!value.enabled) return
 
+    // Mount-time failures must never escape: the loader aborts the whole
+    // profile when a plugin's apply() throws (a missing asset file used to
+    // make the desktop app refuse to boot). Log and keep the plugin tree alive.
+    try {
+      mountSurfaces(value)
+    } catch (error) {
+      ctx.logger?.warn?.('dsh-project-memory: mounting plugin surfaces failed: ' + String(error))
+    }
+  }
+
+  /** Register the prompt sections and runtime skills for the live config. */
+  const mountSurfaces = (value: ReturnType<typeof resolve>): void => {
     if (value.announceToAgent) {
       disposeSection = ctx.systemPrompt.section({
         name: 'plugin:dsh-project-memory',

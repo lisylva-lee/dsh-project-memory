@@ -6,6 +6,16 @@ export declare const POLICY_FILE = "AGENT_WORKFLOW.md";
 export declare const BOARD_FILE = "STATUS.md";
 /** Per-task scratch root. */
 export declare const WORK_ROOT = "_work";
+/**
+ * Resolve the bundled workflow assets for one module URL.
+ *
+ * The module is bundled into lib/index.js, where "../assets/workflow/"
+ * resolves to the package root; running from src/ (dev + tests) needs
+ * "../../assets/workflow/". Probe both so the same code is correct in either
+ * layout - a wrong guess here used to be fatal, because it threw at plugin
+ * mount time and the loader aborted the whole profile.
+ */
+export declare function workflowAssetsRootFor(moduleUrl: string): string;
 /** Absolute path of the bundled workflow assets (SKILL.md + templates + checks). */
 export declare function packageWorkflowAssetsRoot(): string;
 /** Default user skill root: ~/.dsh/skills/agent-workflow. */

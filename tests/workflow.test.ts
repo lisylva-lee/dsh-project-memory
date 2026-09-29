@@ -11,9 +11,11 @@ import {
   createTaskWorkspace,
   ensureWorkflowInit,
   parseBoard,
+  packageWorkflowAssetsRoot,
   readBoardSummary,
   resolveWorkflowTemplateDir,
   unfinishedRows,
+  workflowAssetsRootFor,
 } from '../src/core/workflow.ts'
 import { DEFAULT_WORKFLOW } from '../src/core/contract.ts'
 import { MemoryStore, normalizeConfig, toWorkflow } from '../src/store.ts'
@@ -39,6 +41,27 @@ const BOARD = [
   '| 20260102-blocked | 被卡住的事 | 阻塞（等用户） | 等确认 | 无 | 是否继续 |',
   '| 20260103-active | 进行中的事 | 进行中 | 写测试 | _work/20260103-active/evidence/ | 无 |',
 ].join('\n')
+
+describe('bundled asset resolution (regression: v0.2.0 startup crash)', () => {
+  it('resolves the package assets from both the bundled lib/ and src/ layouts', () => {
+    const here = import.meta.url
+    const bundled = here.replace('/src/core/workflow.ts', '/lib/index.js')
+    const strip = (value: string) => value.replace(/[\\/]+$/, '')
+    const fromSrc = workflowAssetsRootFor(here)
+    const fromLib = workflowAssetsRootFor(bundled)
+    expect(strip(fromSrc).endsWith(join('assets', 'workflow'))).toBe(true)
+    expect(strip(fromLib)).toBe(strip(fromSrc))
+    expect(existsSync(join(fromLib, 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(fromLib, 'templates', 'AGENT_WORKFLOW.md'))).toBe(true)
+  })
+
+  it('packageWorkflowAssetsRoot() points at a real skill file', () => {
+    const root = packageWorkflowAssetsRoot()
+    expect(root.replace(/[\\/]+$/, '').endsWith(join('assets', 'workflow'))).toBe(true)
+    expect(existsSync(join(root, 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(root, 'install-workflow.sh'))).toBe(true)
+  })
+})
 
 describe('workflow scaffolding', () => {
   it('copies policy, board, scripts and checks once (idempotent)', () => {

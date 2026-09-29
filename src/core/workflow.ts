@@ -28,9 +28,30 @@ export const BOARD_FILE = 'STATUS.md'
 /** Per-task scratch root. */
 export const WORK_ROOT = '_work'
 
+/**
+ * Resolve the bundled workflow assets for one module URL.
+ *
+ * The module is bundled into lib/index.js, where "../assets/workflow/"
+ * resolves to the package root; running from src/ (dev + tests) needs
+ * "../../assets/workflow/". Probe both so the same code is correct in either
+ * layout - a wrong guess here used to be fatal, because it threw at plugin
+ * mount time and the loader aborted the whole profile.
+ */
+export function workflowAssetsRootFor(moduleUrl: string): string {
+  const candidates = [
+    new URL('../assets/workflow/', moduleUrl),
+    new URL('../../assets/workflow/', moduleUrl),
+  ]
+  for (const url of candidates) {
+    const dir = fileURLToPath(url)
+    if (existsSync(join(dir, 'SKILL.md'))) return dir
+  }
+  return fileURLToPath(candidates[0])
+}
+
 /** Absolute path of the bundled workflow assets (SKILL.md + templates + checks). */
 export function packageWorkflowAssetsRoot(): string {
-  return fileURLToPath(new URL('../../assets/workflow/', import.meta.url))
+  return workflowAssetsRootFor(import.meta.url)
 }
 
 /** Default user skill root: ~/.dsh/skills/agent-workflow. */
