@@ -4,7 +4,7 @@
  * Seeding, bundling externals and the client-bundle purity gate all consume
  * this list so their module identities cannot drift. It mirrors the shell's
  * frozen table (`staticModules` in `dsh-web-frontend`), verified against the
- * 0.1.5-rc.1 dist:
+ * 0.2.0-rc.2 dist (unchanged since 0.1.5-rc.1):
  *   react, react/jsx-runtime, react-dom, react-dom/client, cordis,
  *   dsh-client-store, dsh-client-ui-slots, dsh-client-ui-primitives,
  *   dsh-client-ui-dockkit

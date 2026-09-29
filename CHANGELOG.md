@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.3.0 - 2026-09-30
+
+Targets the 0.2.0-rc.2 cohort (Session V4). Requires DSH >= 0.2.0-rc.2; v0.2.1 stays the last release for the 0.1.5-rc.1 cohort.
+
+### Fixed
+
+- **The turn-end guidance steer was rejected on Session V4**: the injected `createUserMessage` carried the retired `{ kind: 'plugin', plugin: ... }` wrapper, which V4 refuses (`format v4 message requires a producer-owned source kind`), and because the steer only enqueues, the rejection surfaced as a failed *next* turn rather than a plugin warning. Both steers (memory auto-maintain, workflow turn-end check) now carry their own producer kind - `dsh-project-memory` and `dsh-agent-workflow` - declared through `MessageSourceMap` module augmentation, the same merge-extensible mechanism core uses for `skill-invocation`.
+- **Session-entry auto-init never ran on 0.2.0-rc.x**: the listener was registered on `agent/session-start`, an event the 0.2.0-rc.2 host no longer has (its successor is `agent/created`), so the MEMORY.md / `memory/` scaffolding and the workflow scaffold silently stopped happening when a session entered. The listener now binds `agent/created`, and only `startup` / `clear` count as a new session for the compression interval, so a resume or an in-turn compaction no longer inflates it.
+- Client half: the settings contract was renamed upstream (`SettingsScope` -> `ConfigForm`, `SettingsScopeSnapshot` -> `ConfigFormSnapshot`) and the shared card form follows. Its optional batched-write path (a dsh-web-ui bridge extension that the new API replaces) is gone; a save now writes field by field.
+
+### Changed
+
+- Development cohort moved from 0.1.5-rc.1 to 0.2.0-rc.2 for every `@deepseek-ai/dsh-*` devDependency, and `dsh.engines.dsh` plus the `@deepseek-ai/dsh-llm` peer range were raised to match.
+
+### Notes
+
+- `pnpm typecheck`, `pnpm test` (47 tests) and `pnpm build` are green on the new cohort.
+
 ## v0.2.1 - 2026-09-29
 
 ### Fixed

@@ -8,7 +8,7 @@
  *   - autoInit / autoMaintain / announceToAgent：细分开关。
  *   - 每会话覆盖（sessions.<id>.enabled）：只在总闸开启时生效，关掉某个会话
  *     即该会话不自动记忆。
- *   - agent/session-start 按会话 cwd 自动初始化 MEMORY.md + memory/_TEMPLATE.md
+ *   - agent/created 按会话 cwd 自动初始化 MEMORY.md + memory/_TEMPLATE.md
  *     + memory/YYYY-MM-DD.md（幂等，不覆盖已有文件）。
  *   - agent/turn-stopping 每轮有实际工具的 turn 结束时 steer 一步收尾引导：
  *     写/更新 memory/YYYY-MM-DD.md（背景/改动/结论/关联）并更新 MEMORY.md 索引
@@ -23,6 +23,17 @@ import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-skill'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
+
+// MessageSourceMap is the merge-extensible sum type behind MessageSource: every
+// producer owns its own kind (core does the same for 'skill-invocation'), which
+// is what Session V4 accepts in place of the retired { kind: 'plugin', ... }.
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'dsh-project-memory': { kind: 'dsh-project-memory' }
+    'dsh-agent-workflow': { kind: 'dsh-agent-workflow' }
+  }
+}
+
 import { GUIDANCE, MAINTAIN_PROMPT, SKILL_DESCRIPTION, SKILL_WHEN_TO_USE } from './core/guidance.ts'
 import {
   DEFAULT_WORKFLOW,
@@ -251,9 +262,13 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
     'dsh-project-memory: routes',
   )
 
-  // Session-start auto-init and turn-end auto-maintain are registered once
+  // Session-entry auto-init and turn-end auto-maintain are registered once
   // and gated live, so toggling the config never churns listeners.
-  ctx.on('agent/session-start', (payload) => {
+  // `agent/created` is the 0.2.0-rc.x successor of the retired
+  // `agent/session-start`: it fires for startup, resume, clear and compaction,
+  // and listeners are awaited before creation resolves, so the scaffolding is
+  // in place before the first turn.
+  ctx.on('agent/created', (payload): undefined => {
     try {
       const agent = payload?.agent
       if (!agent || isSubagentSession(agent)) return
@@ -261,6 +276,9 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       const cwd = header?.cwd
       if (typeof cwd !== 'string' || cwd === '') return
       const sessionId = header?.id
+      // Only a new conversation counts as a session for the compression
+      // interval; resume and compaction re-enter an agent that already counted.
+      const newConversation = payload.source === 'startup' || payload.source === 'clear'
       const value = resolve()
       if (!value.enabled) return
 
@@ -283,7 +301,7 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       }
 
       // Compression: count sessions per project; at the interval, compress.
-      if (sessionCompressActive(sessionId)) {
+      if (newConversation && sessionCompressActive(sessionId)) {
         const next = (value.counts[cwd] ?? 0) + 1
         if (next >= value.compressInterval) {
           const results = runCompression(cwd)
@@ -297,7 +315,7 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
         }
       }
     } catch (error) {
-      ctx.logger?.warn?.('dsh-project-memory: session-start init/compress failed: ' + String(error))
+      ctx.logger?.warn?.('dsh-project-memory: session init/compress failed: ' + String(error))
     }
   })
 
@@ -327,7 +345,9 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       for (const t of [...steered]) if (t < turn - 100) steered.delete(t)
       agent.steer?.(createUserMessage({
         content: [{ type: 'text', text: MAINTAIN_PROMPT }],
-        source: { kind: 'plugin', plugin: 'dsh-project-memory' },
+        // Session V4 (DSH >= 0.2.0-rc.1) rejects the retired plugin-wrapper source:
+        // an injected message must carry its own producer-owned kind.
+        source: { kind: 'dsh-project-memory' },
       }))
     } catch (error) {
       ctx.logger?.warn?.('dsh-project-memory: auto-maintain steer failed: ' + String(error))
@@ -370,7 +390,9 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
         '然后回复一句话说明处理结果。'
       agent.steer?.(createUserMessage({
         content: [{ type: 'text', text }],
-        source: { kind: 'plugin', plugin: 'dsh-agent-workflow' },
+        // Session V4 (DSH >= 0.2.0-rc.1) rejects the retired plugin-wrapper source:
+        // an injected message must carry its own producer-owned kind.
+        source: { kind: 'dsh-agent-workflow' },
       }))
     } catch (error) {
       ctx.logger?.warn?.('dsh-agent-workflow: workflow check steer failed: ' + String(error))

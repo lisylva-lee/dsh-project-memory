@@ -81,7 +81,7 @@ node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:li
 
 | 条件 | 说明 |
 | --- | --- |
-| 带 `web` profile 的 DSH，且属于 **0.1.5-rc.1** 这一代 | 插件依赖该代的能力：`dsh.bundle.patch` 挂载、`dsh.client` 浏览器半边，以及 `ctx.skills` / `ctx.systemPrompt` / `ctx.on(agent/session-start)` / `ctx.on(agent/turn-stopping)`。 |
+| DSH **>= 0.2.0-rc.2**（Session V4） | 插件依赖该代的能力：`dsh.bundle.patch` 挂载、`dsh.client` 浏览器半边，以及 `ctx.skills` / `ctx.systemPrompt` / `ctx.on(agent/created)` / `ctx.on(agent/turn-stopping)`。0.1.5-rc.x 这一代请用 v0.2.1。 |
 | PATH 里有 `git` 与 `pnpm` | `dsh plugin ... add github:...` 会克隆仓库并用 pnpm 安装。 |
 | 能访问本机回环地址上的 harness web 服务 | 配置卡片通过 `/api/dsh-project-memory/*`（仅回环）读写。 |
 | Bash（Git Bash / zsh 等） | 仅"只装工作流模板"这条路需要：`assets/workflow/install-workflow.sh`。 |

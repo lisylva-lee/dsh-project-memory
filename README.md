@@ -97,7 +97,7 @@ node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:li
 
 | Requirement | Why / notes |
 | --- | --- |
-| DSH with a `web` profile on the **0.1.5-rc.1** cohort | The plugin targets that cohort: `dsh.bundle.patch` mount, the `dsh.client` browser half, and `ctx.skills` / `ctx.systemPrompt` / `ctx.on(agent/session-start)` / `ctx.on(agent/turn-stopping)`. |
+| DSH **>= 0.2.0-rc.2** (Session V4) | The plugin targets that cohort: `dsh.bundle.patch` mount, the `dsh.client` browser half, and `ctx.skills` / `ctx.systemPrompt` / `ctx.on(agent/created)` / `ctx.on(agent/turn-stopping)`. A 0.1.5-rc.x host needs v0.2.1. |
 | `git` and `pnpm` on PATH | `dsh plugin ... add github:...` clones the repository and installs it with pnpm. |
 | Loopback access to the harness web server | The config card reads and writes `/api/dsh-project-memory/*` (loopback-only routes). |
 | Bash (Git Bash, zsh, …) | Only needed for the standalone workflow installer `assets/workflow/install-workflow.sh`. |

@@ -8,7 +8,7 @@
  *   - autoInit / autoMaintain / announceToAgent：细分开关。
  *   - 每会话覆盖（sessions.<id>.enabled）：只在总闸开启时生效，关掉某个会话
  *     即该会话不自动记忆。
- *   - agent/session-start 按会话 cwd 自动初始化 MEMORY.md + memory/_TEMPLATE.md
+ *   - agent/created 按会话 cwd 自动初始化 MEMORY.md + memory/_TEMPLATE.md
  *     + memory/YYYY-MM-DD.md（幂等，不覆盖已有文件）。
  *   - agent/turn-stopping 每轮有实际工具的 turn 结束时 steer 一步收尾引导：
  *     写/更新 memory/YYYY-MM-DD.md（背景/改动/结论/关联）并更新 MEMORY.md 索引
@@ -18,6 +18,16 @@
  *     每会话开关读写 ~/.dsh/dsh-project-memory.json。
  */
 import type { Context } from '@deepseek-ai/cordis';
+declare module '@deepseek-ai/dsh-llm' {
+    interface MessageSourceMap {
+        'dsh-project-memory': {
+            kind: 'dsh-project-memory';
+        };
+        'dsh-agent-workflow': {
+            kind: 'dsh-agent-workflow';
+        };
+    }
+}
 /** Stable cordis plugin name. */
 export declare const name = "project-memory";
 /** Services required before the plugin surfaces can mount. */
