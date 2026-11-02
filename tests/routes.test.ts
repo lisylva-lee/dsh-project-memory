@@ -95,6 +95,21 @@ describe('config routes', () => {
     expect(workflow?.enabled).toBe(true)
   })
 
+  it('PUT config patches the nested index sub-switches and drops invalid ones', async () => {
+    const captured = fakeResponse()
+    await configRoute?.handler(
+      fakeRequest('PUT', { indexes: { turnCheck: false, toolsTtlHours: 6, autoRefresh: 'nope', bogus: 1 } }),
+      captured.res,
+    )
+    expect(captured.status).toBe(200)
+    const indexes = (captured.body as { indexes?: Record<string, unknown> }).indexes
+    expect(indexes?.turnCheck).toBe(false)
+    expect(indexes?.toolsTtlHours).toBe(6)
+    expect(indexes?.autoRefresh).toBe(true)
+    expect(indexes?.bogus).toBeUndefined()
+    expect(indexes?.enabled).toBe(true)
+  })
+
   it('PUT session sets and clears memory and compression overrides', async () => {
     const setRes = fakeResponse()
     await sessionRoute?.handler(fakeRequest('PUT', { sessionId: 's-1', enabled: false, compress: true }), setRes.res)

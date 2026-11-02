@@ -13,10 +13,11 @@ import {
   fetchConfig,
   updateConfig,
   type GlobalConfigPatch,
+  type IndexesConfigView,
   type MemoryConfigView,
   type WorkflowConfigView,
 } from './api.ts'
-import { BooleanField, PluginSettingsCard } from './PluginSettingsCard.tsx'
+import { BooleanField, PluginSettingsCard, ValueField } from './PluginSettingsCard.tsx'
 import type { CardShell, FieldState } from './settings-form.ts'
 
 /** Composed props of the card: the group slot's runtime share + this plugin's locale. */
@@ -48,6 +49,23 @@ function workflowOf(config: MemoryConfigView): WorkflowConfigView {
   return config.workflow ?? WORKFLOW_DEFAULTS
 }
 
+/** The three-tree index sub-switches this card edits (navigation / skills / tools). */
+const INDEX_IDS = ['enabled', 'autoRefresh', 'turnCheck'] as const
+type IndexId = typeof INDEX_IDS[number]
+
+/** Defaults used when the host predates the index sub-switches. */
+const INDEX_DEFAULTS: IndexesConfigView = {
+  enabled: true,
+  autoRefresh: true,
+  turnCheck: true,
+  toolsTtlHours: 24,
+}
+
+/** Read the index sub-switches with a safe fallback for old hosts. */
+function indexesOf(config: MemoryConfigView): IndexesConfigView {
+  return config.indexes ?? INDEX_DEFAULTS
+}
+
 /** The plugin-config card (family chrome, expanded: it is a whole settings page). */
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   const { t } = props
@@ -76,7 +94,9 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
 
   const dirty =
     FIELD_IDS.some(id => valueOf(draft, id) !== valueOf(config, id)) ||
-    WORKFLOW_IDS.some(id => workflowOf(draft)[id] !== workflowOf(config)[id])
+    WORKFLOW_IDS.some(id => workflowOf(draft)[id] !== workflowOf(config)[id]) ||
+    INDEX_IDS.some(id => indexesOf(draft)[id] !== indexesOf(config)[id]) ||
+    indexesOf(draft).toolsTtlHours !== indexesOf(config).toolsTtlHours
 
   const shell: CardShell = {
     available: true,
@@ -128,6 +148,25 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
     setDraft({ ...draft, workflow: { ...workflowOf(draft), [id]: true } })
   }
 
+  const indexState = (id: IndexId): FieldState => ({
+    text: String(indexesOf(draft)[id]),
+    overridden: false,
+    invalid: false,
+  })
+
+  const indexEdit = (id: IndexId) => (text: string): void => {
+    setFailed(undefined)
+    setDraft({ ...draft, indexes: { ...indexesOf(draft), [id]: text === 'false' ? false : true } })
+  }
+
+  const indexReset = (id: IndexId) => (): void => {
+    setFailed(undefined)
+    setDraft({ ...draft, indexes: { ...indexesOf(draft), [id]: INDEX_DEFAULTS[id] } })
+  }
+
+  const ttlText = String(indexesOf(draft).toolsTtlHours)
+  const ttlInvalid = !/^[0-9]+$/.test(ttlText.trim()) || Number(ttlText) < 1
+
   const save = async (): Promise<void> => {
     if (busy || !dirty) return
     setBusy(true)
@@ -140,6 +179,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
         announceToAgent: draft.announceToAgent,
         autoCompress: draft.autoCompress,
         workflow: workflowOf(draft),
+        indexes: indexesOf(draft),
       } satisfies GlobalConfigPatch)
       setConfig(next)
       setDraft(next)
@@ -272,6 +312,62 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
         {...workflowState('boardInject')}
         onEdit={workflowEdit('boardInject')}
         onReset={workflowReset('boardInject')}
+      />
+      <BooleanField
+        id="settings-project-memory-indexes-enabled"
+        label={t('settings.indexesEnabled')}
+        hint={t('settings.indexesEnabledHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...indexState('enabled')}
+        onEdit={indexEdit('enabled')}
+        onReset={indexReset('enabled')}
+      />
+      <BooleanField
+        id="settings-project-memory-indexes-auto-refresh"
+        label={t('settings.indexesAutoRefresh')}
+        hint={t('settings.indexesAutoRefreshHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...indexState('autoRefresh')}
+        onEdit={indexEdit('autoRefresh')}
+        onReset={indexReset('autoRefresh')}
+      />
+      <BooleanField
+        id="settings-project-memory-indexes-turn-check"
+        label={t('settings.indexesTurnCheck')}
+        hint={t('settings.indexesTurnCheckHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...indexState('turnCheck')}
+        onEdit={indexEdit('turnCheck')}
+        onReset={indexReset('turnCheck')}
+      />
+      <ValueField
+        id="settings-project-memory-indexes-tools-ttl"
+        label={t('settings.indexesToolsTtl')}
+        hint={t('settings.indexesToolsTtlHint')}
+        numeric={true}
+        {...fieldProps}
+        overridden={false}
+        invalid={ttlInvalid}
+        text={ttlText}
+        onEdit={(text: string) => {
+          setFailed(undefined)
+          const parsed = Number(text.trim())
+          if (!Number.isInteger(parsed) || parsed < 1) return
+          setDraft({ ...draft, indexes: { ...indexesOf(draft), toolsTtlHours: parsed } })
+        }}
+        onReset={() => {
+          setFailed(undefined)
+          setDraft({ ...draft, indexes: { ...indexesOf(draft), toolsTtlHours: INDEX_DEFAULTS.toolsTtlHours } })
+        }}
       />
     </PluginSettingsCard>
   )

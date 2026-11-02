@@ -34,11 +34,21 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 
-import { GUIDANCE, MAINTAIN_PROMPT, SKILL_DESCRIPTION, SKILL_WHEN_TO_USE } from './core/guidance.ts'
 import {
+  GUIDANCE,
+  INDEX_DRIFT_PROMPT_PREFIX,
+  INDEX_MAINTAIN_HINT,
+  MAINTAIN_PROMPT,
+  SKILL_DESCRIPTION,
+  SKILL_WHEN_TO_USE,
+} from './core/guidance.ts'
+import { indexHint, refreshIndexes, structureChanged } from './core/indexes.ts'
+import {
+  DEFAULT_INDEXES,
   DEFAULT_WORKFLOW,
   MEMORY_OFF_GUIDANCE,
   WORKFLOW_OFF_GUIDANCE,
+  type IndexesConfig,
   type WorkflowConfig,
 } from './core/contract.ts'
 import {
@@ -79,10 +89,12 @@ interface CompositionDefaults {
   autoCompress: boolean
   compressInterval: number
   workflow: WorkflowConfig
+  indexes: IndexesConfig
 }
 
 function resolveDefaults(config: Record<string, unknown> | undefined): CompositionDefaults {
   const rawWorkflow = (config as { workflow?: Record<string, unknown> } | undefined)?.workflow
+  const rawIndexes = (config as { indexes?: Record<string, unknown> } | undefined)?.indexes
   return {
     enabled: typeof config?.enabled === 'boolean' ? config.enabled : true,
     autoInit: typeof config?.autoInit === 'boolean' ? config.autoInit : true,
@@ -92,6 +104,14 @@ function resolveDefaults(config: Record<string, unknown> | undefined): Compositi
     compressInterval: typeof config?.compressInterval === 'number' && Number.isInteger(config.compressInterval) && config.compressInterval >= 1
       ? config.compressInterval
       : 5,
+    indexes: {
+      enabled: typeof rawIndexes?.enabled === 'boolean' ? rawIndexes.enabled : DEFAULT_INDEXES.enabled,
+      autoRefresh: typeof rawIndexes?.autoRefresh === 'boolean' ? rawIndexes.autoRefresh : DEFAULT_INDEXES.autoRefresh,
+      turnCheck: typeof rawIndexes?.turnCheck === 'boolean' ? rawIndexes.turnCheck : DEFAULT_INDEXES.turnCheck,
+      toolsTtlHours: typeof rawIndexes?.toolsTtlHours === 'number' && Number.isInteger(rawIndexes.toolsTtlHours) && rawIndexes.toolsTtlHours >= 1
+        ? rawIndexes.toolsTtlHours
+        : DEFAULT_INDEXES.toolsTtlHours,
+    },
     workflow: {
       enabled: typeof rawWorkflow?.enabled === 'boolean' ? rawWorkflow.enabled : DEFAULT_WORKFLOW.enabled,
       autoScaffold: typeof rawWorkflow?.autoScaffold === 'boolean' ? rawWorkflow.autoScaffold : DEFAULT_WORKFLOW.autoScaffold,
@@ -139,6 +159,7 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       sessions: file?.sessions ?? {},
       counts: file?.counts ?? {},
       workflow: file?.workflow ?? defaults.workflow,
+      indexes: file?.indexes ?? defaults.indexes,
     }
   }
 
@@ -206,10 +227,12 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
         order: SECTION_ORDER,
         text: (context: AssembleContext) => {
           const live = resolve()
-          const header = context.agent?.session?.header as { id?: string } | undefined
+          const header = context.agent?.session?.header as { id?: string; cwd?: string } | undefined
           const id = header?.id
           if (id !== undefined && live.sessions[id]?.enabled === false) return MEMORY_OFF_GUIDANCE
-          return GUIDANCE
+          // 索引提示只加一行（≤160 字符）：告诉模型索引已存在、别扫全盘，正文按需读文件。
+          const hint = typeof header?.cwd === 'string' && live.indexes.enabled ? indexHint(header.cwd) : ''
+          return hint === '' ? GUIDANCE : GUIDANCE + '\n' + hint
         },
       })
     }
@@ -287,6 +310,17 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
         const created = ensureMemoryInit(cwd, resolveTemplateDir())
         if (created.length > 0) {
           ctx.logger?.info?.('dsh-project-memory: initialized memory in ' + cwd + ': ' + created.join(', '))
+        }
+      }
+
+      // 三棵树索引：会话开始按结构指纹重建 NAVIGATION/SKILLS/TOOLS；
+      // 指纹一致时不写盘、不产生任何模型可见内容（这是「自发更新不烧 token」的关键）。
+      if (value.indexes.enabled && value.indexes.autoRefresh && sessionActive(sessionId)) {
+        const refreshed = refreshIndexes(cwd, { toolsTtlHours: value.indexes.toolsTtlHours })
+        if (refreshed.length > 0) {
+          ctx.logger?.info?.(
+            'dsh-project-memory: refreshed indexes in ' + cwd + ': ' + refreshed.map(r => r.kind).join(', '),
+          )
         }
       }
 
@@ -396,6 +430,49 @@ export function apply(ctx: Context, config?: Record<string, unknown>): void {
       }))
     } catch (error) {
       ctx.logger?.warn?.('dsh-agent-workflow: workflow check steer failed: ' + String(error))
+    }
+  })
+
+  // 索引漂移提醒：轮末只比较结构指纹（纯 readdir + hash，毫秒级、0 token），
+  // 只有真的新增/删除目录或技能时才 steer 一次，让模型去改对应索引的 AUTO 段。
+  const indexGate = new Map<string, Set<number>>()
+  ctx.on('agent/turn-stopping', (payload) => {
+    try {
+      const value = resolve()
+      if (!value.enabled || !value.indexes.enabled || !value.indexes.turnCheck) return
+      const agent = payload?.agent
+      if (!agent || isSubagentSession(agent)) return
+      if (payload.signal?.aborted) return
+      const sessionId = agent.session?.header?.id
+      if (!sessionActive(sessionId)) return
+      const cwd = agent.session?.header?.cwd
+      if (typeof cwd !== 'string' || cwd === '') return
+      const changed = structureChanged(cwd, { toolsTtlHours: value.indexes.toolsTtlHours })
+      if (changed.length === 0) return
+      // 先由插件自己按最新结构重建 AUTO 段并更新指纹（毫秒级、0 token）。
+      // 这一步是「不会漂移」的关键：提醒发出后指纹已是最新，下一轮不可能重复提醒。
+      const refreshed = refreshIndexes(cwd, { toolsTtlHours: value.indexes.toolsTtlHours })
+      const turn = payload.turn ?? -1
+      const agentId = agent.id ?? sessionId ?? 'unknown'
+      let steered = indexGate.get(agentId)
+      if (steered === undefined) {
+        steered = new Set<number>()
+        indexGate.set(agentId, steered)
+      }
+      if (steered.has(turn)) return
+      steered.add(turn)
+      for (const t of [...steered]) if (t < turn - 100) steered.delete(t)
+      const text =
+        INDEX_DRIFT_PROMPT_PREFIX + changed.join('、') + '。\n' +
+        'AUTO 段已由插件按最新结构自动重建（' + refreshed.map(r => r.kind).join('、') + '），无需手改；' +
+        '若要补充语义说明（例如新目录是干什么的），写进对应文件末尾的「手写区」即可。' +
+        INDEX_MAINTAIN_HINT
+      agent.steer?.(createUserMessage({
+        content: [{ type: 'text', text }],
+        source: { kind: 'dsh-project-memory' },
+      }))
+    } catch (error) {
+      ctx.logger?.warn?.('dsh-project-memory: index drift steer failed: ' + String(error))
     }
   })
 

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterAll, describe, expect, it } from 'vitest'
 import { MemoryStore, normalizeConfig } from '../src/store.ts'
-import { DEFAULT_WORKFLOW } from '../src/core/contract.ts'
+import { DEFAULT_INDEXES, DEFAULT_WORKFLOW } from '../src/core/contract.ts'
 
 describe('normalizeConfig', () => {
   it('applies defaults for a missing document', () => {
@@ -20,6 +20,7 @@ describe('normalizeConfig', () => {
       sessions: {},
       counts: {},
       workflow: DEFAULT_WORKFLOW,
+      indexes: DEFAULT_INDEXES,
     })
   })
 

@@ -9,7 +9,9 @@ import { dirname, join } from 'node:path'
 import {
   CONFIG_FILE_NAME,
   DEFAULT_CONFIG,
+  DEFAULT_INDEXES,
   DEFAULT_WORKFLOW,
+  type IndexesConfig,
   type MemoryConfig,
   type SessionOverride,
   type WorkflowConfig,
@@ -42,6 +44,18 @@ export function toWorkflow(raw: unknown): WorkflowConfig {
     autoScaffold: toBool(raw.autoScaffold, base.autoScaffold),
     turnCheck: toBool(raw.turnCheck, base.turnCheck),
     boardInject: toBool(raw.boardInject, base.boardInject),
+  }
+}
+
+/** Normalize the nested index sub-switches (missing = defaults). */
+export function toIndexes(raw: unknown): IndexesConfig {
+  const base = DEFAULT_INDEXES
+  if (!isRecord(raw)) return { ...base }
+  return {
+    enabled: toBool(raw.enabled, base.enabled),
+    autoRefresh: toBool(raw.autoRefresh, base.autoRefresh),
+    turnCheck: toBool(raw.turnCheck, base.turnCheck),
+    toolsTtlHours: toInterval(raw.toolsTtlHours, base.toolsTtlHours),
   }
 }
 
@@ -88,6 +102,7 @@ export function normalizeConfig(raw: unknown): MemoryConfig {
     sessions,
     counts: toCounts(raw.counts),
     workflow: toWorkflow(raw.workflow),
+    indexes: toIndexes(raw.indexes),
   }
 }
 
@@ -101,6 +116,8 @@ export interface GlobalPatch {
   compressInterval?: number
   /** Patch of the nested workflow sub-switches (omitted fields keep their value). */
   workflow?: Partial<WorkflowConfig>
+  /** Patch of the nested index sub-switches (omitted fields keep their value). */
+  indexes?: Partial<IndexesConfig>
 }
 
 /** Fields of the workflow sub-switch patch. */
@@ -112,6 +129,24 @@ function mergeWorkflow(current: WorkflowConfig, patch: unknown): WorkflowConfig 
   const next: WorkflowConfig = { ...current }
   for (const key of WORKFLOW_KEYS) {
     const value = patch[key]
+    if (typeof value === 'boolean') next[key] = value
+  }
+  return next
+}
+
+/** Fields of the index sub-switch patch. */
+const INDEXES_KEYS: ReadonlyArray<keyof IndexesConfig> = ['enabled', 'autoRefresh', 'turnCheck', 'toolsTtlHours']
+
+/** Merge a partial index patch over the current value, dropping invalid entries. */
+function mergeIndexes(current: IndexesConfig, patch: unknown): IndexesConfig {
+  if (!isRecord(patch)) return current
+  const next: IndexesConfig = { ...current }
+  for (const key of INDEXES_KEYS) {
+    const value = patch[key]
+    if (key === 'toolsTtlHours') {
+      if (typeof value === 'number' && Number.isInteger(value) && value >= 1) next.toolsTtlHours = value
+      continue
+    }
     if (typeof value === 'boolean') next[key] = value
   }
   return next
@@ -158,6 +193,7 @@ export class MemoryStore {
       ...(patch.autoCompress !== undefined ? { autoCompress: patch.autoCompress } : {}),
       ...(patch.compressInterval !== undefined ? { compressInterval: patch.compressInterval } : {}),
       ...(patch.workflow !== undefined ? { workflow: mergeWorkflow(current.workflow, patch.workflow) } : {}),
+      ...(patch.indexes !== undefined ? { indexes: mergeIndexes(current.indexes, patch.indexes) } : {}),
     })
     this.save(next)
     return next

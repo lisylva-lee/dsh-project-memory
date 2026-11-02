@@ -1,6 +1,6 @@
 ---
 name: project-memory
-description: 人读版项目记忆体系（手工 MEMORY.md 主索引 + memory/YYYY-MM-DD.md 每日详情），与 dsh-memoir 插件构成双重记忆。当用户要求"使用记忆模板 / 创建项目记忆 / 初始化记忆 / 维护记忆 / 更新 MEMORY.md / 写每日记忆 / 人眼查看项目记忆"或提到 F:\xiangmu\记忆模板 时，先加载本技能再行动。
+description: 人读版项目记忆体系（手工 MEMORY.md 主索引 + memory/YYYY-MM-DD.md 每日详情），与 dsh-memoir 插件构成双重记忆。当用户要求"使用记忆模板 / 创建项目记忆 / 初始化记忆 / 维护记忆 / 更新 MEMORY.md / 写每日记忆 / 人眼查看项目记忆"或提到 F:\xiangmu\infra\templates\memory-template 时，先加载本技能再行动。
 whenToUse: 用户要求为任意项目建立或维护人读版记忆体系（MEMORY.md + memory/），或要求记忆可被肉眼查看/提交 git 时。
 ---
 
@@ -33,6 +33,23 @@ whenToUse: 用户要求为任意项目建立或维护人读版记忆体系（MEM
 ② 执行任务
 ③ 写 `memory/YYYY-MM-DD.md` → 记录详情（背景/改动/结论/关联）；当天多次任务合并到一个文件、分节记录
 ④ 更新 `MEMORY.md` → 索引表加一行 + 更新最近摘要（最多 3 条）
+
+## 三棵树索引（空间 / 能力 / 环境）
+
+插件在会话开始时自动生成并维护三份索引，每份都由 **AUTO 段（可重生成）+ 手写段（永不覆盖）** 组成：
+
+| 文件 | 轴 | 内容 | 何时更新 |
+| --- | --- | --- | --- |
+| `NAVIGATION.md` | 空间 | 顶层目录树 + 子目录名 + 根文件 | 目录增删/改名（指纹变化） |
+| `SKILLS.md` | 能力 | 已注册技能（可直接 `skill()`）/ 项目未注册 / 其他库根，三档分明 | 技能增删（指纹变化） |
+| `TOOLS.md` | 环境 | 工具名 + 版本 + 绝对路径 + 调用方式；机器级缓存在 `<dsh home>/env/tools.json` | TTL 过期（默认 24h）或手动刷新 |
+
+**触发方式（三种，全部确定性，不靠模型自觉）**：
+1. **会话开始**（`agent/created`）：算结构指纹，只有和上次不同才重写 AUTO 段；工具清单只在缓存过期时重探。
+2. **轮末自检**（`agent/turn-stopping`）：只比较指纹（纯 readdir + hash，毫秒级、0 token）。检测到变化时**插件自己先重建 AUTO 段并更新指纹**，再发一条短提示（告知变化 + 可选手写补充）——因为指纹已更新，下一轮不可能重复提醒，**不会形成漂移循环**。
+3. **用户显式**：说「更新导航 / 刷新索引 / 重建技能清单」即可；命令行也可 `node --experimental-strip-types scripts/refresh-indexes.ts <cwd> [--force]`。
+
+**铁律**：索引里不写凭据（只写路径与版本）；`SKILLS.md` 必须标清「能否 skill() 加载」，否则会诱发误加载；结构没变化就不要重写文件。
 
 ## 规则
 - 主记忆 ≤ 10K：只存规则 + 索引 + 摘要；细节一律写 `memory/YYYY-MM-DD.md`。

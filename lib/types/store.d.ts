@@ -1,8 +1,10 @@
-import { type MemoryConfig, type WorkflowConfig } from './core/contract.ts';
+import { type IndexesConfig, type MemoryConfig, type WorkflowConfig } from './core/contract.ts';
 /** Resolve the config file path under the dsh home. */
 export declare function configPath(home?: string): string;
 /** Normalize the nested workflow sub-switches (missing = defaults). */
 export declare function toWorkflow(raw: unknown): WorkflowConfig;
+/** Normalize the nested index sub-switches (missing = defaults). */
+export declare function toIndexes(raw: unknown): IndexesConfig;
 /** Validate/normalize an untrusted config document (file or request body). */
 export declare function normalizeConfig(raw: unknown): MemoryConfig;
 /** Global switches a config PUT may patch. */
@@ -15,6 +17,8 @@ export interface GlobalPatch {
     compressInterval?: number;
     /** Patch of the nested workflow sub-switches (omitted fields keep their value). */
     workflow?: Partial<WorkflowConfig>;
+    /** Patch of the nested index sub-switches (omitted fields keep their value). */
+    indexes?: Partial<IndexesConfig>;
 }
 /** Atomic file store for the plugin config. */
 export declare class MemoryStore {

@@ -23,9 +23,17 @@ export const MAINTAIN_PROMPT =
   '2. 若本轮已写过记忆、或没有值得沉淀的内容，直接回复「本轮无需沉淀」，不要调用任何工具。\n' +
   '最终回复保持一句话以内，不要展开。'
 
+/** 轮末结构变化提醒的开头：只在结构指纹 diff 时发出，常态零 token。 */
+export const INDEX_DRIFT_PROMPT_PREFIX = '（dsh-project-memory 索引漂移）检测到工作区结构变化：'
+
+/** 索引维护的固定说明（SKILL.md 与轮末提醒共用）。 */
+export const INDEX_MAINTAIN_HINT =
+  '索引说明：NAVIGATION.md（目录树）/ SKILLS.md（技能清单，标注能否 skill() 加载）/ TOOLS.md（工具与版本）；'
+  + 'AUTO 段由插件维护、勿手改，需要补充说明写「手写区」。'
+
 /** Runtime-skill description shown in the skill catalog. */
 export const SKILL_DESCRIPTION =
-  '人读版项目记忆体系（手工 MEMORY.md 主索引 + memory/YYYY-MM-DD.md 每日详情），由 dsh-project-memory 插件自动初始化并维护。当用户要求"使用记忆模板 / 创建项目记忆 / 初始化记忆 / 维护记忆 / 更新 MEMORY.md / 写每日记忆 / 人眼查看项目记忆"或提到 F:\\xiangmu\\记忆模板 时，先加载本技能再行动。'
+  '人读版项目记忆体系（手工 MEMORY.md 主索引 + memory/YYYY-MM-DD.md 每日详情），由 dsh-project-memory 插件自动初始化并维护。当用户要求"使用记忆模板 / 创建项目记忆 / 初始化记忆 / 维护记忆 / 更新 MEMORY.md / 写每日记忆 / 人眼查看项目记忆"或提到 F:\\xiangmu\\infra\\templates\\memory-template 时，先加载本技能再行动。'
 
 /** Runtime-skill whenToUse guidance. */
 export const SKILL_WHEN_TO_USE =

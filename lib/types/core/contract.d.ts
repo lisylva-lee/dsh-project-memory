@@ -23,6 +23,17 @@ export interface WorkflowConfig {
     /** Inject the STATUS.md board summary into the system prompt. */
     boardInject: boolean;
 }
+/** 三棵树索引（NAVIGATION.md / SKILLS.md / TOOLS.md）的子开关。 */
+export interface IndexesConfig {
+    /** 总开关：关掉则不生成、不提醒、不注入索引提示。 */
+    enabled: boolean;
+    /** 会话开始按结构指纹重建目录树 / 技能清单（无变化不写盘）。 */
+    autoRefresh: boolean;
+    /** 轮末发现结构变化时提醒模型更新索引（只在有 diff 时触发）。 */
+    turnCheck: boolean;
+    /** 机器级工具清单缓存的 TTL（小时）。 */
+    toolsTtlHours: number;
+}
 /** The effective plugin configuration (global switches + per-session overrides). */
 export interface MemoryConfig {
     /** Master switch: off disables skill registration, guidance, init, maintain, compress. */
@@ -43,9 +54,13 @@ export interface MemoryConfig {
     counts: Record<string, number>;
     /** Agent-workflow sub-switches (nested so old configs stay valid). */
     workflow: WorkflowConfig;
+    /** 三棵树索引子开关（nested 以保持旧配置有效）。 */
+    indexes: IndexesConfig;
 }
 /** Defaults applied when a config document (file or request) omits a field. */
 export declare const DEFAULT_CONFIG: MemoryConfig;
+/** Defaults for the index sub-switches (used by the normalizer). */
+export declare const DEFAULT_INDEXES: IndexesConfig;
 /** Defaults for the workflow sub-switches (used by the normalizer). */
 export declare const DEFAULT_WORKFLOW: WorkflowConfig;
 /** Config file name under ~/.dsh/. */

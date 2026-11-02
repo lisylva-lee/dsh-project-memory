@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.3.2 - 2026-11-02
+
+### Added
+
+- **三棵树索引**：`src/core/indexes.ts` 生成并维护 `NAVIGATION.md`（目录树）/ `SKILLS.md`（技能清单，三档标注「已注册可 skill() 加载 / 项目未注册 / 其他库根」）/ `TOOLS.md`（工具版本 + 绝对路径 + 调用方式；机器级缓存 `<dsh home>/env/tools.json`，默认 TTL 24h）。
+- 每份索引都是「AUTO 段可重生成 + 手写段永不覆盖」；结构指纹未变则**不写盘**。
+- `agent/created` 按指纹刷新索引；`agent/turn-stopping` 只比较指纹，**仅在检测到目录/技能变化时 steer 一次**（常态 0 token）；system prompt 只追加一行索引提示。
+- 配置新增 `indexes: { enabled, autoRefresh, turnCheck, toolsTtlHours }`（缺省全开，旧配置自动补默认值）。
+- 命令行：`node --experimental-strip-types scripts/refresh-indexes.ts <cwd> [--force]`。
+
+### Notes
+
+- 索引文件只写路径与版本，绝不写凭据。
+- 生成器只依赖 node 内置模块，无 node_modules 也能跑。
+
 ## v0.3.1 - 2026-11-02
 
 Targets the 0.2.1-rc.x desktop host. `dsh.engines.dsh` stays at `>=0.2.0-rc.2`.

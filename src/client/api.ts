@@ -18,6 +18,14 @@ export interface WorkflowConfigView {
   boardInject: boolean
 }
 
+/** 三棵树索引子开关（目录树 / 技能清单 / 工具清单）。 */
+export interface IndexesConfigView {
+  enabled: boolean
+  autoRefresh: boolean
+  turnCheck: boolean
+  toolsTtlHours: number
+}
+
 /** The config view the GUI renders. */
 export interface MemoryConfigView {
   enabled: boolean
@@ -29,6 +37,8 @@ export interface MemoryConfigView {
   sessions: Record<string, SessionOverride>
   /** Present since the agent-workflow surface shipped; absent on very old hosts. */
   workflow?: WorkflowConfigView
+  /** Present since the three-tree index surface shipped; absent on old hosts. */
+  indexes?: IndexesConfigView
 }
 
 /** Global switches a PUT may patch. */
@@ -38,6 +48,8 @@ export type GlobalConfigPatch = Partial<Pick<
 >> & {
   /** Nested workflow sub-switch patch. */
   workflow?: Partial<WorkflowConfigView>
+  /** Nested index sub-switch patch. */
+  indexes?: Partial<IndexesConfigView>
 }
 
 const API_PREFIX = '/api/dsh-project-memory'

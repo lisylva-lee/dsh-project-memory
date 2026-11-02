@@ -95,6 +95,12 @@ export function makeRoutes(store: MemoryStore, onChange: () => void): WebRoute[]
               turnCheck?: boolean
               boardInject?: boolean
             }
+            indexes?: {
+              enabled?: boolean
+              autoRefresh?: boolean
+              turnCheck?: boolean
+              toolsTtlHours?: number
+            }
           } = {}
           for (const key of ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent', 'autoCompress'] as const) {
             if (typeof patch[key] === 'boolean') clean[key] = patch[key] as boolean
@@ -110,6 +116,18 @@ export function makeRoutes(store: MemoryStore, onChange: () => void): WebRoute[]
               if (typeof raw[key] === 'boolean') workflow[key] = raw[key] as boolean
             }
             if (Object.keys(workflow).length > 0) clean.workflow = workflow
+          }
+          // Nested index sub-switch patch (absent/invalid keys are dropped).
+          if (typeof patch.indexes === 'object' && patch.indexes !== null && !Array.isArray(patch.indexes)) {
+            const raw = patch.indexes as Record<string, unknown>
+            const indexes: NonNullable<typeof clean.indexes> = {}
+            for (const key of ['enabled', 'autoRefresh', 'turnCheck'] as const) {
+              if (typeof raw[key] === 'boolean') indexes[key] = raw[key] as boolean
+            }
+            if (typeof raw.toolsTtlHours === 'number' && Number.isInteger(raw.toolsTtlHours) && raw.toolsTtlHours >= 1) {
+              indexes.toolsTtlHours = raw.toolsTtlHours
+            }
+            if (Object.keys(indexes).length > 0) clean.indexes = indexes
           }
           const next = store.updateGlobal(clean)
           onChange()
