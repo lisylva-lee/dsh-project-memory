@@ -89,6 +89,39 @@ node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:li
 
 > **从旧包名升级？** `@linxin666/dsh-project-memory`（<= 0.1.2）与本包（`@lisylva-lee/dsh-project-memory`，>= 0.2.0）**是不同的包名**。请先移除旧包，否则会同时挂载两个记忆插件。
 
+### `git` / `pnpm` 不在 PATH 时
+
+`dsh plugin … add github:…` 内部会调用 `git` 与 `pnpm`，缺任何一个都会直接报「不是内部或外部命令」。先自检：
+
+```powershell
+where.exe git
+where.exe pnpm
+```
+
+**缺 pnpm** —— 下面任选其一（前两种不需要管理员权限）：
+
+```powershell
+corepack enable pnpm            # Node >= 16 自带 corepack，会在 node 同目录生成 pnpm 垫片
+npx --yes pnpm@10 <命令>        # 一次性，pnpm 下到 npx 缓存里
+npm install -g pnpm             # 全局安装
+```
+
+**缺 git** —— 装 Git for Windows（`winget install --id Git.Git -e`），或解压一份便携版 MinGit，把它的 `cmd` 目录加进 `PATH`，或者直接用全路径调用：
+
+```powershell
+& 'D:/tools/MinGit/cmd/git.exe' --version
+```
+
+**完全不想改 PATH** —— 用内置 node + 全路径执行（本插件就是在这台「git/pnpm 都不在 PATH」的机器上这样装起来的）：
+
+```powershell
+& '<dsh>/resources/runtime/bin/node.exe' '<profile>/node_modules/@deepseek-ai/dsh/lib/bin.js' `
+    plugin --profile web add github:lisylva-lee/dsh-project-memory#v0.3.2
+```
+
+**GUI 插件管理器** —— 设置里的插件页走的是同一套 pnpm 操作，缺 `pnpm` 一样会失败：先解决 `pnpm`，再从 GUI 装。另外桌面版 profile 的 `node_modules` 是 CI 种下的，任何 pnpm 类插件操作前都要**先停应用**、在 profile 目录跑一次 `pnpm install`（见上文）。
+
+> **实测环境**：Windows 11 + DSH 桌面版自带 Node，`git` 与 `pnpm` **都不在 PATH**；用 `npx --yes pnpm@10`（10.34.9）+ 一份便携 MinGit，完成了本插件的安装、构建与全量测试。
 ### 安装（推荐：直接从 GitHub 装）
 
 ```sh

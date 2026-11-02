@@ -105,6 +105,39 @@ node node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add github:li
 
 > **Upgrading from the old name?** `@linxin666/dsh-project-memory` (<= 0.1.2) and this package (`@lisylva-lee/dsh-project-memory`, >= 0.2.0) are different package names. Remove the old one first, otherwise two memory plugins are mounted at once.
 
+### When `git` / `pnpm` are not on PATH
+
+`dsh plugin … add github:…` shells out to `git` and `pnpm`. If either is missing the install fails with a bare "not recognized" error. Check first:
+
+```powershell
+where.exe git
+where.exe pnpm
+```
+
+**pnpm missing** — any one of these works (the first two need no admin rights):
+
+```powershell
+corepack enable pnpm            # Node >= 16 bundles corepack; writes pnpm shims next to node
+npx --yes pnpm@10 <command>     # one-shot; downloads pnpm into the npx cache
+npm install -g pnpm             # global install
+```
+
+**git missing** — install Git for Windows (`winget install --id Git.Git -e`), or unpack a portable MinGit and either add its `cmd` directory to `PATH` or call it by full path:
+
+```powershell
+& 'D:/tools/MinGit/cmd/git.exe' --version
+```
+
+**No PATH edits at all** — run the bundled Node with the full paths (this is the form that works on a machine where neither tool is on `PATH`):
+
+```powershell
+& '<dsh>/resources/runtime/bin/node.exe' '<profile>/node_modules/@deepseek-ai/dsh/lib/bin.js' `
+    plugin --profile web add github:lisylva-lee/dsh-project-memory#v0.3.2
+```
+
+**GUI plugin manager** — the Plugins page in Settings drives the same pnpm operation, so a missing `pnpm` breaks it the same way: fix `pnpm` first, then install from the GUI. On the desktop app the profile's `node_modules` is CI-seeded, so stop the app and run one `pnpm install` inside the profile directory before any pnpm-based plugin operation (see above).
+
+> **Verified on Windows 11 with the Node bundled by DSH Desktop:** both `git` and `pnpm` were absent from `PATH`; `npx --yes pnpm@10` (10.34.9) plus a portable MinGit were enough to install, build and test this plugin end to end.
 ### Install (recommended: straight from GitHub)
 
 ```sh
