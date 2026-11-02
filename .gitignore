@@ -16,3 +16,10 @@ memory/
 !assets/workflow/templates/
 !assets/workflow/templates/**
 !assets/workflow/templates/_work/_template/run.log
+
+# ---- 由 _templates/gitignore.unified 追加（2026-10-30）----
+build/
+.dart_tool/
+__pycache__/
+.gradle/
+dist/
