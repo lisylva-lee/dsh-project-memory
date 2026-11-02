@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.1 - 2026-11-02
+
+Targets the 0.2.1-rc.x desktop host. `dsh.engines.dsh` stays at `>=0.2.0-rc.2`.
+
+### Fixed
+
+- **The settings card never mounted on the 0.2.1-rc.x host**: the browser half injected into `web-ui.plugin.item`, a client slot this shell no longer declares (its `Slots` probe answers `available: false`), so the plugin-config card — master switch, memory switches and the four workflow sub-switches — was silently missing from the settings UI while the host half (skill registration, system prompt, session-start init, turn-end maintain, `/api/dsh-project-memory/*`) stayed green. The card now registers into `settings.plugins.tab`, one page inside the Plugins settings section: `order: 20` puts it after the shipped inventory tab, and `label` resolves `settings.title` from this plugin's own dictionary so the tab text follows the UI language.
+- The card opens expanded (`defaultOpen`): it is a whole settings page now, not one collapsed card among many.
+
+### Notes
+
+- The browser half is edited in `src/client/` and mirrored into the committed `lib/client.js`. `lib/client.js.map` was **not** regenerated on this box (no toolchain installed) — run `pnpm build` to refresh it.
+- `settings.plugins.tab` is what the 0.2.1-rc.x shell ships. A host that still declares `web-ui.plugin.item` (the 0.2.1 release line) will no longer show the card.
+
 ## v0.3.0 - 2026-09-30
 
 Targets the 0.2.0-rc.2 cohort (Session V4). Requires DSH >= 0.2.0-rc.2; v0.2.1 stays the last release for the 0.1.5-rc.1 cohort.

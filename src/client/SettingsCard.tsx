@@ -1,6 +1,6 @@
 /**
- * The project-memory plugin-config card, rendered inside the Web UI Plugins
- * group (web-ui.plugin.item). Uses the family-shared collapsible card chrome
+ * The project-memory plugin-config card, rendered as one page of the Plugins
+ * settings section (settings.plugins.tab). Uses the family-shared card chrome
  * (PluginSettingsCard) and the shared BooleanField control, exactly like the
  * task-board / desktop-launcher cards — no custom styling. Unlike those
  * cards, the values are read/written through the plugin's own config routes
@@ -20,7 +20,7 @@ import { BooleanField, PluginSettingsCard } from './PluginSettingsCard.tsx'
 import type { CardShell, FieldState } from './settings-form.ts'
 
 /** Composed props of the card: the group slot's runtime share + this plugin's locale. */
-export type SettingsCardProps = PropsRuntime<'web-ui.plugin.item'> & PropsLocale<'dsh-project-memory'>
+export type SettingsCardProps = PropsRuntime<'settings.plugins.tab'> & PropsLocale<'dsh-project-memory'>
 
 /** The boolean fields this card edits. */
 const FIELD_IDS = ['enabled', 'autoInit', 'autoMaintain', 'announceToAgent', 'autoCompress'] as const
@@ -48,7 +48,7 @@ function workflowOf(config: MemoryConfigView): WorkflowConfigView {
   return config.workflow ?? WORKFLOW_DEFAULTS
 }
 
-/** The plugin-config card (family chrome, collapsed by default). */
+/** The plugin-config card (family chrome, expanded: it is a whole settings page). */
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   const { t } = props
   const [config, setConfig] = useState<MemoryConfigView | null>(null)
@@ -160,7 +160,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
       t={t}
       titleKey="settings.title"
       descriptionKey="settings.description"
-      defaultOpen={false}
+      defaultOpen={true}
       state={shell}
       onSave={() => { void save() }}
       onDiscard={discard}
